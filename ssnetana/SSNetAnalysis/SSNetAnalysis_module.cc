@@ -206,9 +206,12 @@ namespace example {
     int fnum_total_sshits; //the total number of sshits
     int fnum_total_matched_hits; //the total number of matched sshits
     double fratio_total_sshits_hits; //the total number of sshits over total number of hits
-    
-    int fnum_sshits_ROI_no_track_no_shower; //total number of sshits within each ROI once the shower is removed
-    
+   
+    int fnum_sshits_ROI; //total number of sshits within each ROI, including both track and shower
+    int fnum_sshits_ROI_no_shower; //total number of sshits within each ROI once only the shower is removed
+    int fnum_sshits_ROI_no_track; //total number of sshits within each ROI once only the track is removed
+    int fnum_sshits_ROI_no_track_no_shower; //total number of sshits within each ROI once both the track and shower are removed
+       
     int fnum_sshits_shower; //number of sshits in a shower
     int fnum_hits_shower; //number of hits in a shower
     double fratio_hits_shower; //ratio of sshits to hits in a shower
@@ -348,6 +351,10 @@ SSNetTest::SSNetTest(Parameters const& config) // Initialize member data here.
     fmytree->Branch("ratio_hits_track", &fratio_hits_track,   "ratio_hits_track/D");
 */
     fselectTree->Branch("num_sshits_ROI_no_track_no_shower", &fnum_sshits_ROI_no_track_no_shower,   "num_sshits_ROI_no_track_no_shower/I");
+    fselectTree->Branch("num_sshits_ROI_no_shower", &fnum_sshits_ROI_no_shower,   "num_sshits_ROI_no_shower/I");
+    fselectTree->Branch("num_sshits_ROI_no_track", &fnum_sshits_ROI_no_track,   "num_sshits_ROI_no_track/I");
+    fselectTree->Branch("num_sshits_ROI", &fnum_sshits_ROI,   "num_sshits_ROI/I");
+    
     fselectTree->Branch("num_sshits_shower", &fnum_sshits_shower,   "num_sshits_shower/I");
     fselectTree->Branch("num_hits_shower", &fnum_hits_shower,   "num_hits_shower/I");
     fselectTree->Branch("ratio_hits_shower", &fratio_hits_shower,   "ratio_hits_shower/D");
@@ -434,7 +441,9 @@ SSNetTest::SSNetTest(Parameters const& config) // Initialize member data here.
  if (!event.getByLabel(fSSHitProducerLabel, sshitHandle)) return;
 
 //list storing pairs of associated hits and sshits
-std::list<std::pair<const recob::Hit*, const recob::Hit* >> _hitlist; //a list of hits
+std::list<std::pair<const recob::Hit*, const recob::Hit* >> _hitlist; //a list of all sshits<->hits in the event
+std::list<std::pair<const recob::Hit*, const recob::Hit* >> _showerhitlist; //a list of sshits<->hits in the shower associated with vertex (not exclusively in ROI)
+std::list<std::pair<const recob::Hit*, const recob::Hit* >> _trackhitlist; //a list of sshits<->hits in the track associated with vertex (not exclusively in ROI)
  
 int n = 0; //the total number of sshits
 fnum_total_sshits = sshitHandle->size();
@@ -570,7 +579,7 @@ std::cout<<"The number of entries = "<<fmytree->GetEntries()<<std::endl;
 std::cout<<"the number of stored vertices, tracks, and showers = "<<my_vtxs.size()<<", "<<my_trks.size()<<", "<<my_shrs.size()<<std::endl;
 
 /* 
- * Remove shrhits matched with hits in the shower and track
+ * Associate shrhits matched with hits in the shower and track
  */
 
 
@@ -613,12 +622,13 @@ std::vector<TVector3> ShowerStart;
 			 	auto const hit = *(shr_hit_v.at(h)); //get the hit from the pointer in the vector
 				const recob::Hit* this_hit = &hit; //get the address to the hit that was stored in the vector
 			
-				//in the hit list, remove corresponding shr hits
+				//in the hit list, add corresponding shr hits to the shower list
 				for(auto const& item : _hitlist){
 					auto const stored_hit = (std::get<0>(item));
 					if(matches(this_hit, stored_hit)==true){
 						//std::cout<<"removing shower hit"<<std::endl;	
-						_hitlist.remove(item);
+						//_hitlist.remove(item);
+						_showerhitlist.push_back(item);
 						num_sshit_in_shower++;
 						break;
 					}	
@@ -630,8 +640,9 @@ std::vector<TVector3> ShowerStart;
 			if (num_sshit_in_shower > 300){
 				std::cout<<"warning, very large number of sshits"<<std::endl;
 			}
-			std::cout<<"number of remaining matched shr hits = "<<_hitlist.size()<<std::endl;
+			//std::cout<<"number of remaining matched shr hits = "<<_hitlist.size()<<std::endl;
 			std::cout<<"the number of sshits in the shower = "<<fnum_sshits_shower<<std::endl;
+			//std::cout<<"the number of sshits in the shower list = "<<_showerhitlist.size()<<std::endl;
 			
 			fratio_hits_shower = (double)fnum_sshits_shower/fnum_hits_shower;
 			//std::cout<<"the ratio of sshits to hits is "<<fratio_hits_shower<<std::endl;
@@ -672,7 +683,7 @@ std::vector<TVector3> ShowerStart;
 				const recob::Hit* this_hit = &hit;
 				//float this_channel = this_hit.Channel();
 				
-				//if the peak time is in the hit map, remove the shrhits from the map
+				//if hit is in the hit map, put it in the track hit map
 				for (auto const& item : _hitlist){
 					//_hitmap.erase(this_time);
 					//std::cout<<"flag2.1.0.1"<<std::endl;
@@ -681,7 +692,8 @@ std::vector<TVector3> ShowerStart;
 						number_matched_trk_hits++;
 						//std::cout<<"flag2.1.1"<<std::endl;
 						//std::cout<<"the item to be removed is "<<std::get<0>(item) <<", "<<std::get<1>(item)<<std::endl;
-						_hitlist.remove(item);
+						//_hitlist.remove(item);
+						_trackhitlist.push_back(item);
 						//std::cout<<"flag2.1.2"<<std::endl;
 						break;
 					}
@@ -695,6 +707,7 @@ std::vector<TVector3> ShowerStart;
 		fselectTree->Fill();	
 	
 		std::cout<<"the number of matched shr hits in the track = "<<number_matched_trk_hits<<std::endl;
+		std::cout<<"the number of matched shr hits in the track list = "<<_trackhitlist.size()<<std::endl;
 		}//if the tracks match
 		
 	}//for each track from a 1 shower 1 track topology 
@@ -779,7 +792,14 @@ for ( size_t vtx_index = 0; vtx_index != my_vtxs.size(); ++vtx_index ){
 		//std::cout<<"ending plane "<<plane<<std::endl;
 
 	}//for each plane
-fnum_sshits_ROI_no_track_no_shower = _ROIhitlist.size();
+
+//make list of sshits in ROI no track
+
+//make list of sshits in ROI no shower
+
+//make list of sshits in ROI no track or shower
+
+fnum_sshits_ROI = _ROIhitlist.size();
 //my_hist->Fill(fnum_sshits_ROI_no_track_no_shower);
 std::cout<<"the number of shower hits within the ROI is after removing matched =  "<<fnum_sshits_ROI_no_track_no_shower<<std::endl;
 fselectTree->Fill();
@@ -1015,6 +1035,9 @@ double angleFromShower(TVector2 shower_direction_plane, const recob::Hit*  hit, 
 	return opening_angle;
 	
 }
+
+//takes two lists, one of SShits in the ROI and one of all shower or track hits in the event
+//returns a new list of the ROI hits with the ones included in the track/shower removed
 
 
 //converts radius for ROI in units of time and wire from sm
