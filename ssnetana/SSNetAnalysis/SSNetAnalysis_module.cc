@@ -64,6 +64,7 @@ TVector3 findEnd(TVector3* shower_start, double* shower_length, TVector3* shower
 double calcTime(double X,int plane,int fTPC,int fCryostat, detinfo::DetectorProperties const& detprop);
 TVector2 calcNormVec(TVector2 shower_start_plane,TVector2 shower_end_plane);
 double angleFromShower(TVector2 shower_direction_plane, const recob::Hit*  hit, double vertex_time, double vertex_wire);
+std::list<std::pair<const recob::Hit*, const recob::Hit* >> removeHitsROIList(std::list<std::pair<const recob::Hit*, const recob::Hit* >> _ROIlist, std::list<std::pair<const recob::Hit*, const recob::Hit* >> _showerlist);
 //double getRadius(double rad_in_cm);
 }
 
@@ -444,7 +445,7 @@ SSNetTest::SSNetTest(Parameters const& config) // Initialize member data here.
 std::list<std::pair<const recob::Hit*, const recob::Hit* >> _hitlist; //a list of all sshits<->hits in the event
 std::list<std::pair<const recob::Hit*, const recob::Hit* >> _showerhitlist; //a list of sshits<->hits in the shower associated with vertex (not exclusively in ROI)
 std::list<std::pair<const recob::Hit*, const recob::Hit* >> _trackhitlist; //a list of sshits<->hits in the track associated with vertex (not exclusively in ROI)
- 
+	
 int n = 0; //the total number of sshits
 fnum_total_sshits = sshitHandle->size();
 
@@ -593,12 +594,13 @@ std::vector<TVector3> ShowerStart;
 	auto const& shr = showerHandle->at(shr_index);
 	auto const& start  = shr.ShowerStart();
 	for (size_t s = 0; s != my_shrs.size(); ++s ){
+		
 		auto const& current_shr = *(my_shrs.at(s));
 		auto const& current_start = current_shr.ShowerStart();
 		if (start == current_start){
 			std::cout<<"matched showers"<<std::endl;
 			std::cout<<"the shower length is  = "<<shr.Length()<<", and the opening angle is = "<<shr.OpenAngle()<<std::endl;
-			
+			_showerhitlist.clear();	
 			 //get the associated hits for the shower
 			 //const std::vector<art::Ptr<recob::Hit> > shr_hit_v = shr_hit_assn_v.at(shr_index);
 			 auto shr_hit_v = shr_hit_assn_v.at(shr_index);
@@ -637,12 +639,15 @@ std::vector<TVector3> ShowerStart;
 			}//for each hit
 			fnum_sshits_shower = num_sshit_in_shower;
 
-			if (num_sshit_in_shower > 300){
-				std::cout<<"warning, very large number of sshits"<<std::endl;
-			}
+		//	if (num_sshit_in_shower > 300){
+		//		std::cout<<"warning, very large number of sshits"<<std::endl;
+		//	}
 			//std::cout<<"number of remaining matched shr hits = "<<_hitlist.size()<<std::endl;
 			std::cout<<"the number of sshits in the shower = "<<fnum_sshits_shower<<std::endl;
-			//std::cout<<"the number of sshits in the shower list = "<<_showerhitlist.size()<<std::endl;
+			std::cout<<"the number of sshits in the shower list = "<<_showerhitlist.size()<<std::endl;
+			if ((unsigned int)fnum_sshits_shower != _showerhitlist.size()){
+				std::cout<<"warning, number if sshits in the shower do not match"<<std::endl;
+			}
 			
 			fratio_hits_shower = (double)fnum_sshits_shower/fnum_hits_shower;
 			//std::cout<<"the ratio of sshits to hits is "<<fratio_hits_shower<<std::endl;
@@ -663,6 +668,9 @@ std::vector<TVector3> ShowerStart;
 	auto const& trk = trackHandle->at(trk_index);
 	auto const& start  = trk.Start();
 	for (size_t tr = 0; tr != my_trks.size(); ++tr ){
+		//clear the track list
+		_trackhitlist.clear();
+	
 		auto const& current_trk = *(my_trks.at(tr));
 		auto const& current_start = current_trk.Start();
 		int number_matched_trk_hits = 0;
@@ -708,6 +716,10 @@ std::vector<TVector3> ShowerStart;
 	
 		std::cout<<"the number of matched shr hits in the track = "<<number_matched_trk_hits<<std::endl;
 		std::cout<<"the number of matched shr hits in the track list = "<<_trackhitlist.size()<<std::endl;
+		if ((unsigned int)number_matched_trk_hits !=_trackhitlist.size()){
+			std::cout<<"warning, number of hits in track don't match"<<std::endl;
+		}	
+
 		}//if the tracks match
 		
 	}//for each track from a 1 shower 1 track topology 
@@ -794,6 +806,8 @@ for ( size_t vtx_index = 0; vtx_index != my_vtxs.size(); ++vtx_index ){
 	}//for each plane
 
 //make list of sshits in ROI no track
+auto const _listnotrack = removeHitsROIList(_ROIhitlist, _trackhitlist);
+std::cout<<"the number of hits in the ROI with no track is "<<_listnotrack.size()<<std::endl;
 
 //make list of sshits in ROI no shower
 
@@ -801,7 +815,11 @@ for ( size_t vtx_index = 0; vtx_index != my_vtxs.size(); ++vtx_index ){
 
 fnum_sshits_ROI = _ROIhitlist.size();
 //my_hist->Fill(fnum_sshits_ROI_no_track_no_shower);
-std::cout<<"the number of shower hits within the ROI is after removing matched =  "<<fnum_sshits_ROI_no_track_no_shower<<std::endl;
+std::cout<<"the number of shower hits within the ROI before removing track or shower =  "<<fnum_sshits_ROI<<std::endl;
+
+//if ((unsigned int)fnum_sshits_ROI != _listnotrack.size()){
+//	std::cout<<"warning, some track sshits removed from ROI"<<std::endl;
+//}
 fselectTree->Fill();
 
 }//loop over vertices
@@ -1038,6 +1056,23 @@ double angleFromShower(TVector2 shower_direction_plane, const recob::Hit*  hit, 
 
 //takes two lists, one of SShits in the ROI and one of all shower or track hits in the event
 //returns a new list of the ROI hits with the ones included in the track/shower removed
+std::list<std::pair<const recob::Hit*, const recob::Hit* >> removeHitsROIList(std::list<std::pair<const recob::Hit*, const recob::Hit* >> _ROIlist, std::list<std::pair<const recob::Hit*, const recob::Hit* >> _showerlist){
+	int num_hits_obj_in_ROI = 0;
+	std::list<std::pair<const recob::Hit*, const recob::Hit* >> _listcopy;
+	for(auto const& item : _ROIlist){
+		_listcopy.push_back(item);
+		auto const this_hit = (std::get<0>(item));
+		for(auto const& this_item : _showerlist){
+			 auto const stored_hit = (std::get<0>(this_item));
+                         if(matches(this_hit, stored_hit)== true){
+				 _listcopy.remove(this_item);
+				num_hits_obj_in_ROI++;
+			}
+		}
+	}
+	std::cout<<"the number of hits from the track/shower object in the ROI is "<<num_hits_obj_in_ROI<<std::endl;
+	return _listcopy;
+}
 
 
 //converts radius for ROI in units of time and wire from sm
