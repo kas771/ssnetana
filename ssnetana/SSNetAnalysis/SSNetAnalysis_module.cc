@@ -53,11 +53,14 @@
  #include <string>
  #include <cmath>
  #include <memory>
+ #include <iostream>
+ #include <fstream> 
 
 namespace{
 double DetectorDiagonal(geo::GeometryCore const& geom);
 bool matches(const recob::Hit* Hit, const recob::Hit* ssHit);
 double distToVtx(double fTimeToCMConstant, double fWireToCMConstant, double radius, double vertex_time, double vertex_wire, const recob::Hit*  hit);
+double distToVtx2d(TVector2 my_point, TVector2 vertex);
 bool inROI(double radius, double dist);
 double calcWire(double Y, double Z, int plane, int fTPC, int fCryostat, geo::GeometryCore const& geo );
 TVector3 findEnd(TVector3* shower_start, double* shower_length, TVector3* shower_dir);
@@ -65,6 +68,8 @@ double calcTime(double X,int plane,int fTPC,int fCryostat, detinfo::DetectorProp
 TVector2 calcNormVec(TVector2 shower_start_plane,TVector2 shower_end_plane);
 double angleFromShower(TVector2 shower_direction_plane, const recob::Hit*  hit, double vertex_time, double vertex_wire);
 std::list<std::pair<const recob::Hit*, const recob::Hit* >> removeHitsROIList(std::list<std::pair<const recob::Hit*, const recob::Hit* >> _ROIlist, std::list<std::pair<const recob::Hit*, const recob::Hit* >> _showerlist);
+std::vector<std::array<double, 3>> Circle3D(const TVector3& centerPos, const TVector3& axisDir, const double& radius);
+std::vector<TVector2>* getMinMaxShowerPlane(std::vector<std::array<double, 3>> coneRim,int plane, int fTPC, int fCryostat, geo::GeometryCore const& geo, detinfo::DetectorProperties const& detprop, TVector2 shower_start_plane, std::vector<TVector2>* min_max);
 //double getRadius(double rad_in_cm);
 }
 
@@ -150,9 +155,13 @@ namespace example {
     virtual void beginJob() override;
     virtual void beginRun(const art::Run& run) override;
     virtual void analyze (const art::Event& event) override;
+    virtual void endJob() override;
 
   private:
-
+        
+     //fb.open ("test.txt",std::ios::out);
+    std::ofstream out_stream;
+    
     // The parameters we'll read from the .fcl file.
     art::InputTag fSimulationProducerLabel; ///< The name of the producer that tracked simulated particles through the detector
     art::InputTag fHitProducerLabel;        ///< The name of the producer that created hits
@@ -260,6 +269,7 @@ SSNetTest::SSNetTest(Parameters const& config) // Initialize member data here.
        // produces< std::vector< recob::Hit > >(Form("shrhit%zu",(size_t)(fPxThresholdHigh*100.)));
         //produces< std::vector< recob::Hit > >(Form("shrhit%zu",(size_t)(fPxThresholdLow*100.) ));
 
+
   {
     // get a pointer to the geometry service provider
      fGeometry = lar::providerFrom<geo::Geometry>();
@@ -267,6 +277,15 @@ SSNetTest::SSNetTest(Parameters const& config) // Initialize member data here.
 
     //get a pointer to the detector properties service provider
      fDetprop = lar::providerFrom<detinfo::DetectorPropertiesService>();
+
+    //initialize ostream
+    out_stream.open("test.txt");
+    if (!out_stream.is_open()){
+	std::cout<<"ERROR file not open"<<std::endl;
+	exit(0);
+	}
+    
+    
  }
 
 
@@ -274,6 +293,11 @@ SSNetTest::SSNetTest(Parameters const& config) // Initialize member data here.
   //-----------------------------------------------------------------------
   void SSNetTest::beginJob()
   {
+   // fb.open ("test.txt",std::ios::out);
+  //  os(&fb);
+    out_stream << "Test sentence\n";
+    //fb.close();
+
     // Get the detector length, to determine the maximum bin edge of one
     // of the histograms.
     const double detectorLength = DetectorDiagonal(*fGeometry);
@@ -382,11 +406,18 @@ SSNetTest::SSNetTest(Parameters const& config) // Initialize member data here.
   //-----------------------------------------------------------------------
   void SSNetTest::analyze(const art::Event& event) 
   {
-    std::cout<<"------- starting event --------"<<std::endl;
+    //std::cout<<"------- starting event --------"<<std::endl;
     // Start by fetching some basic event information for our n-tuple.
     fEvent  = event.id().event(); 
     fRun    = event.run();
     fSubRun = event.subRun();
+    
+    std::cout<<"------- starting event: "<<fRun<<", "<<fSubRun<<", "<<fEvent<<" --------"<<std::endl;
+    
+    //write run subrun event to .txt
+    //std::ostream os(&fb);
+    out_stream <<"run subrun event "<<fRun<<" "<<fSubRun<<" "<<fEvent<<"\n";
+
 
    //read in PFParticles
    art::ValidHandle< std::vector<recob::PFParticle> > PFPHandle
@@ -452,10 +483,18 @@ fnum_total_sshits = sshitHandle->size();
 // For every ssHit:
     for ( auto const& sshit : (*sshitHandle) )
       {
+	int plane = sshit.View();
+	double wire = sshit.WireID().Wire;
+	double time = sshit.PeakTime();
+	out_stream<<"sshit "<<n<<" plane "<<plane<<" wire time "<<wire <<" "<<time<<"\n";
 	n++;
 	//for every Hit
 	for ( auto const& hit : (*hitHandle) ){
-
+		//if (n==1){
+		//	int plane = hit.View();
+        	//	double wire = hit.WireID().Wire*fWireToCMConstant;
+        	//	double time = hit.PeakTime()* fTimeToCMConstant;
+		//}
 		//if the wire, plane, and time match
 		if (matches(&hit, &sshit)== true){	
 			//make a pair of pointers to hits and add them to the list
@@ -463,6 +502,16 @@ fnum_total_sshits = sshitHandle->size();
 		}//if they match	
 	}//for each Hit
  } // for each SSHit
+
+//add hits to .txt file
+int n2 = 0;
+for ( auto const& hit : (*hitHandle) ){
+	int plane = hit.View();
+	double wire = hit.WireID().Wire;
+        double time = hit.PeakTime();
+	out_stream<<"hit "<<n2<<" plane "<<plane<<" wire time "<<wire <<" "<<time<<"\n";
+	n2++;
+}
 
 fnum_total_matched_hits = _hitlist.size();
 fratio_total_sshits_hits = (double)fnum_total_sshits/fnum_total_hits;
@@ -589,6 +638,7 @@ std::cout<<"the number of stored vertices, tracks, and showers = "<<my_vtxs.size
 std::vector<TVector3> ShowerDir;
 std::vector<double> ShowerLen;
 std::vector<TVector3> ShowerStart;
+std::vector<double> ShowerAng;
  
   for ( size_t shr_index = 0; shr_index != showerHandle->size(); ++shr_index ){
 	auto const& shr = showerHandle->at(shr_index);
@@ -617,6 +667,8 @@ std::vector<TVector3> ShowerStart;
 			auto this_dir = current_shr.Direction();
 			ShowerDir.push_back(this_dir);
 
+			auto this_ang = current_shr.OpenAngle();
+			ShowerAng.push_back(this_ang);
 			std::cout<<"the shower direction X component = "<<this_dir.X()<<std::endl;
 		
 			//for each hit
@@ -754,9 +806,15 @@ for ( size_t vtx_index = 0; vtx_index != my_vtxs.size(); ++vtx_index ){
 	TVector3 shower_start = ShowerStart.at(vtx_index);
 	double shower_length = ShowerLen.at(vtx_index);
 	TVector3 shower_dir = ShowerDir.at(vtx_index);
+	double shower_angle = ShowerAng.at(vtx_index);
 
 	//create shower end point
 	TVector3 shower_end = findEnd(&shower_start, &shower_length, &shower_dir);
+
+	//create 3d cone of rim
+	double shower_radius = shower_length * shower_angle;
+	std::cout<<"the shower radius is "<<shower_radius<<std::endl;
+        std::vector<std::array<double, 3>> coneRim = Circle3D(shower_end, shower_dir, shower_radius);
 
 	std::cout<<"The shower start is = "<<shower_start.X()<<", "<<shower_start.Y()<<", "<<shower_start.Z()<<std::endl;
 	std::cout<<"The shower length is = "<<shower_length<<std::endl;
@@ -776,9 +834,17 @@ for ( size_t vtx_index = 0; vtx_index != my_vtxs.size(); ++vtx_index ){
 		double wire = calcWire(Y, Z, plane, fTPC, fCryostat, *fGeometry);
 		double time = calcTime(X, plane, fTPC,fCryostat, *fDetprop);
 		std::cout<<"the time and wire on plane "<<plane<<" is ("<<time<<", "<<wire<<")"<<std::endl;
-
+		out_stream<<"vertex "<<vtx_index<<" plane "<<plane<<" wire time "<<wire<<" "<<time<<"\n"; 		
+		
 		TVector2 shower_start_plane = TVector2(calcTime(shower_start.X(), plane, fTPC,fCryostat, *fDetprop), calcWire(shower_start.Y(), shower_start.Z(), plane, fTPC, fCryostat, *fGeometry));	
 		TVector2 shower_end_plane =  TVector2(calcTime(shower_end.X(), plane, fTPC,fCryostat, *fDetprop), calcWire(shower_end.Y(), shower_end.Z(), plane, fTPC, fCryostat, *fGeometry));
+
+		std::vector<TVector2>* min_max;
+		std::vector<TVector2> shower_plane = *getMinMaxShowerPlane(coneRim,plane, fTPC, fCryostat, *fGeometry, *fDetprop, shower_start_plane, min_max);
+		TVector2 dist_min = shower_plane.at(1);
+		TVector2 dist_max = shower_plane.at(0);
+
+		out_stream<<"shower "<<vtx_index<<" plane "<<plane<<" startwt "<<shower_start_plane.Y()<<" "<<shower_start_plane.X()<<" "<<dist_min.X()<<" "<<dist_min.Y()<<" "<<dist_max.X()<<" "<<dist_max.Y()<<" \n";
 
 		TVector2 shower_direction_plane = calcNormVec(shower_start_plane, shower_end_plane); 
 		
@@ -796,7 +862,7 @@ for ( size_t vtx_index = 0; vtx_index != my_vtxs.size(); ++vtx_index ){
                                 fradial_dist_sshit_vtx = dist;
 				fopening_angle_shower_sshit = angleFromShower(shower_direction_plane, this_sshit, time,wire);
 				//std::cout<<"the angle from the shower is "<<angle<<std::endl;
-				
+						
 				fROITree->Fill();	
 			} //if in ROI
 		}//each sshit
@@ -810,6 +876,8 @@ auto const _listnotrack = removeHitsROIList(_ROIhitlist, _trackhitlist);
 std::cout<<"the number of hits in the ROI with no track is "<<_listnotrack.size()<<std::endl;
 
 //make list of sshits in ROI no shower
+auto const _listnoshower = removeHitsROIList(_ROIhitlist, _showerhitlist);
+std::cout<<"the number of hits in the ROI with no shower is "<<_listnoshower.size()<<std::endl;
 
 //make list of sshits in ROI no track or shower
 
@@ -943,6 +1011,11 @@ std::map< int, const simb::MCParticle* > particleMap;
       }
  } // SSNetTest::analyze()
  
+void SSNetTest::endJob(){
+	//fb.close();
+	out_stream.close();
+	std::cout<<"Ending job"<<std::endl;		
+}
   
   // This macro has to be defined for this module to be invoked from a
   // .fcl file; see SSNetTest.fcl for more information.
@@ -996,6 +1069,11 @@ double distToVtx(double fTimeToCMConstant, double fWireToCMConstant, double radi
 	double dist_from_vtx = (diff_t*diff_t) + (diff_w*diff_w);
 	return dist_from_vtx;
 }//distToVtx
+
+double distToVtx2d(TVector2 my_point, TVector2 vertex){
+	TVector2 dist = vertex-my_point;
+	return dist.Mod();
+}
 
 //takes the distance to the vertex of a hit on a given plane and the radius
 //returns true if hit is in ROI, false otherwise
@@ -1074,6 +1152,71 @@ std::list<std::pair<const recob::Hit*, const recob::Hit* >> removeHitsROIList(st
 	return _listcopy;
 }
 
+//draw a circle in 3D given the length, direction, and  radius
+std::vector<std::array<double, 3>> Circle3D(const TVector3& centerPos, const TVector3& axisDir, const double& radius)  {
+   // B. Baller Create a polyline circle in 3D 
+      
+      // Make the rotation matrix to transform into the circle coordinate system
+     TRotation r;
+     r.RotateX(axisDir.X());
+     r.RotateY(axisDir.Y());
+     r.RotateZ(axisDir.Z());
+     constexpr unsigned short nRimPts = 16;
+     std::vector<std::array<double, 3>> rimPts(nRimPts + 1);
+     for(unsigned short iang = 0; iang < nRimPts; ++iang) {
+       double rimAngle = iang * 2 * M_PI / (float)nRimPts;
+        TVector3 rim = {0, 0, 1};
+        rim.SetX(radius * cos(rimAngle));
+        rim.SetY(radius * sin(rimAngle));
+        rim.SetZ(0);
+        rim.Transform(r);
+        rim += centerPos;
+        for(unsigned short ixyz = 0; ixyz < 3; ++ixyz) rimPts[iang][ixyz] = rim[ixyz];
+      } // iang
+     // close the circle
+     rimPts[nRimPts] = rimPts[0];
+     return rimPts;
+}
+
+//gets the two other vertices of a shower for a given plane by computing a circle in 3D
+//and then projecting each point to a given plane
+//The two points furtherest away from the shower start in either direction are taken to be the vertices
+std::vector<TVector2>* getMinMaxShowerPlane(std::vector<std::array<double, 3>> coneRim,int plane, int fTPC, int fCryostat, geo::GeometryCore const& geo, detinfo::DetectorProperties const& detprop, TVector2 shower_start_plane, std::vector<TVector2>* min_max){
+	std::vector<TVector2> plane_points; 
+	for(std::array<double, 3> point : coneRim ){
+		//calc 2d point of cone rim
+		double x = point.at(0);
+		double y = point.at(1);
+		double z = point.at(2);
+
+		TVector2 this_point_2d = TVector2(calcTime(x, plane, fTPC,fCryostat, detprop), calcWire(y, z, plane, fTPC, fCryostat, geo));
+		plane_points.push_back(this_point_2d);
+			
+	}
+	//find min and max of rim
+	TVector2 min = plane_points.at(0);
+	TVector2 max = plane_points.at(0);
+	double dist_min = distToVtx2d(min, shower_start_plane);
+	double dist_max = distToVtx2d(max, shower_start_plane);
+		
+	for(TVector2 vec:plane_points){
+		double this_dist = distToVtx2d(vec, shower_start_plane);
+		if (this_dist<dist_min){
+			dist_min=this_dist;
+			min = vec;
+		}	
+		if (this_dist>dist_max){
+			dist_max=this_dist;
+			max= vec;
+		}	
+	}
+	
+	std::vector<TVector2> this_min_max;
+	this_min_max.push_back(min);
+	this_min_max.push_back(max);
+	min_max = &this_min_max;
+	return min_max;
+}
 
 //converts radius for ROI in units of time and wire from sm
 //double getRadius(double rad_in_cm){
