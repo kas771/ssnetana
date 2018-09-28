@@ -844,7 +844,7 @@ for ( size_t vtx_index = 0; vtx_index != my_vtxs.size(); ++vtx_index ){
 		TVector2 dist_min = shower_plane.at(1);
 		TVector2 dist_max = shower_plane.at(0);
 
-		out_stream<<"shower "<<vtx_index<<" plane "<<plane<<" startwt "<<shower_start_plane.Y()<<" "<<shower_start_plane.X()<<" "<<dist_min.X()<<" "<<dist_min.Y()<<" "<<dist_max.X()<<" "<<dist_max.Y()<<" \n";
+		out_stream<<"shower "<<vtx_index<<" plane "<<plane<<" startwt "<<shower_start_plane.Y()<<" "<<shower_start_plane.X()<<" "<<dist_min.Y()<<" "<<dist_min.X()<<" "<<dist_max.Y()<<" "<<dist_max.X()<<" \n";
 
 		TVector2 shower_direction_plane = calcNormVec(shower_start_plane, shower_end_plane); 
 		
