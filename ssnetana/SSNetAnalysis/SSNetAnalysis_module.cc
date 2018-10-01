@@ -60,7 +60,7 @@ namespace{
 double DetectorDiagonal(geo::GeometryCore const& geom);
 bool matches(const recob::Hit* Hit, const recob::Hit* ssHit);
 double distToVtx(double fTimeToCMConstant, double fWireToCMConstant, double radius, double vertex_time, double vertex_wire, const recob::Hit*  hit);
-double distToVtx2d(TVector2 my_point, TVector2 vertex);
+//double distToVtx2d(TVector2 my_point, TVector2 vertex);
 bool inROI(double radius, double dist);
 double calcWire(double Y, double Z, int plane, int fTPC, int fCryostat, geo::GeometryCore const& geo );
 TVector3 findEnd(TVector3* shower_start, double* shower_length, TVector3* shower_dir);
@@ -69,7 +69,7 @@ TVector2 calcNormVec(TVector2 shower_start_plane,TVector2 shower_end_plane);
 double angleFromShower(TVector2 shower_direction_plane, const recob::Hit*  hit, double vertex_time, double vertex_wire);
 std::list<std::pair<const recob::Hit*, const recob::Hit* >> removeHitsROIList(std::list<std::pair<const recob::Hit*, const recob::Hit* >> _ROIlist, std::list<std::pair<const recob::Hit*, const recob::Hit* >> _showerlist);
 std::vector<std::array<double, 3>> Circle3D(const TVector3& centerPos, const TVector3& axisDir, const double& radius);
-std::vector<TVector2>* getMinMaxShowerPlane(std::vector<std::array<double, 3>> coneRim,int plane, int fTPC, int fCryostat, geo::GeometryCore const& geo, detinfo::DetectorProperties const& detprop, TVector2 shower_start_plane, std::vector<TVector2>* min_max);
+std::vector<TVector2> getMinMaxShowerPlane(std::vector<std::array<double, 3>> coneRim,int plane, int fTPC, int fCryostat, geo::GeometryCore const& geo, detinfo::DetectorProperties const& detprop, TVector2 shower_start_plane, std::vector<TVector2> min_max);
 //double getRadius(double rad_in_cm);
 }
 
@@ -715,6 +715,10 @@ std::vector<double> ShowerAng;
 //	std::cout<<"shower start xyz = "<<start.X()<<", "<<start.Y()<<", "<< start.Z()<<std::endl;
 }//for each shower
 
+
+std::vector<TVector3> TrackStart;
+std::vector<TVector3> TrackEnd;
+
 //for each track
   for ( size_t trk_index = 0; trk_index != trackHandle->size(); ++trk_index ){
 	auto const& trk = trackHandle->at(trk_index);
@@ -724,7 +728,13 @@ std::vector<double> ShowerAng;
 		_trackhitlist.clear();
 	
 		auto const& current_trk = *(my_trks.at(tr));
-		auto const& current_start = current_trk.Start();
+		auto current_start = current_trk.Start();
+		auto current_vtx = current_trk.Vertex();
+		auto current_end = current_trk.End();
+
+	        TrackStart.push_back(current_vtx);
+		TrackEnd.push_back(current_end);
+		
 		int number_matched_trk_hits = 0;
 		if (start == current_start){
 			std::cout<<"matched tracks"<<std::endl;
@@ -820,6 +830,10 @@ for ( size_t vtx_index = 0; vtx_index != my_vtxs.size(); ++vtx_index ){
 	std::cout<<"The shower length is = "<<shower_length<<std::endl;
 	std::cout<<"The calculated shower end is = "<<shower_end.X()<<", "<<shower_end.Y()<<", "<<shower_end.Z()<<std::endl;
 
+	//get track start and end point
+	TVector3 track_start = TrackStart.at(vtx_index);
+	TVector3 track_end = TrackEnd.at(vtx_index);
+	
 	//for each plane
 	for (int plane = 0; plane <fPlanes; ++plane){	
 		//std::cout<<"starting plane "<<plane<<std::endl;
@@ -836,16 +850,38 @@ for ( size_t vtx_index = 0; vtx_index != my_vtxs.size(); ++vtx_index ){
 		std::cout<<"the time and wire on plane "<<plane<<" is ("<<time<<", "<<wire<<")"<<std::endl;
 		out_stream<<"vertex "<<vtx_index<<" plane "<<plane<<" wire time "<<wire<<" "<<time<<"\n"; 		
 		
+		//get track projections for this plane
+		TVector2 track_start_plane = TVector2(calcTime(track_start.X(), plane, fTPC,fCryostat, *fDetprop), calcWire(track_start.Y(), track_start.Z(), plane, fTPC, fCryostat, *fGeometry));	
+		TVector2 track_end_plane =  TVector2(calcTime(track_end.X(), plane, fTPC,fCryostat, *fDetprop), calcWire(track_end.Y(), track_end.Z(), plane, fTPC, fCryostat, *fGeometry));
+
+		out_stream<<"track "<<vtx_index<<" plane "<<plane<<" wire time "<<track_start_plane.Y()<<" "<<track_start_plane.X()<<" "<<track_end_plane.Y()<<" "<<track_end_plane.X()<<"\n";
+
+
+		//get shower projections for this plane
 		TVector2 shower_start_plane = TVector2(calcTime(shower_start.X(), plane, fTPC,fCryostat, *fDetprop), calcWire(shower_start.Y(), shower_start.Z(), plane, fTPC, fCryostat, *fGeometry));	
 		TVector2 shower_end_plane =  TVector2(calcTime(shower_end.X(), plane, fTPC,fCryostat, *fDetprop), calcWire(shower_end.Y(), shower_end.Z(), plane, fTPC, fCryostat, *fGeometry));
 
-		std::vector<TVector2>* min_max;
-		std::vector<TVector2> shower_plane = *getMinMaxShowerPlane(coneRim,plane, fTPC, fCryostat, *fGeometry, *fDetprop, shower_start_plane, min_max);
-		TVector2 dist_min = shower_plane.at(1);
-		TVector2 dist_max = shower_plane.at(0);
+		//std::vector<TVector2>* min_max;
+		//std::vector<TVector2> shower_plane = *getMinMaxShowerPlane(coneRim,plane, fTPC, fCryostat, *fGeometry, *fDetprop, shower_start_plane, min_max);
+		std::vector<TVector2> min_max;
+		std::vector<TVector2> shower_plane = getMinMaxShowerPlane(coneRim,plane, fTPC, fCryostat, *fGeometry, *fDetprop, shower_start_plane, min_max);
+		//std::vector<TVector2> shower_plane = min_max;
+//		TVector2 dist_min = shower_plane.at(1);
+//		TVector2 dist_max = shower_plane.at(0);
 
-		out_stream<<"shower "<<vtx_index<<" plane "<<plane<<" startwt "<<shower_start_plane.Y()<<" "<<shower_start_plane.X()<<" "<<dist_min.Y()<<" "<<dist_min.X()<<" "<<dist_max.Y()<<" "<<dist_max.X()<<" \n";
+//		out_stream<<"shower "<<vtx_index<<" plane "<<plane<<" startwt "<<shower_start_plane.Y()<<" "<<shower_start_plane.X()<<" "<<dist_min.Y()<<" "<<dist_min.X()<<" "<<dist_max.Y()<<" "<<dist_max.X()<<" \n";
 
+		std::string my_out;
+		for (auto const& item : shower_plane){
+			//std::cout<<"this address = "<<&item<<std::endl;
+			//std::cout<<"this item "<<item.Y()<<" "<<item.X()<<std::endl;
+			my_out+= " " + std::to_string(item.Y()) + " " +  std::to_string(item.X()) + " ";
+			//std::cout<<"my_out = "<<my_out<<std::endl;
+		}				
+		std::cout<<"my_out = "<<my_out<<std::endl;
+
+		out_stream<<"shower "<<vtx_index<<" plane "<<plane<<" startwt "<<shower_start_plane.Y()<<" "<<shower_start_plane.X()<<""<<my_out<<"\n";
+		
 		TVector2 shower_direction_plane = calcNormVec(shower_start_plane, shower_end_plane); 
 		
 		//std::cout<<"the direction of the shower on this plane is "<< shower_direction_plane.X() <<" starting and ending from "<< shower_start_plane.X()<<shower_end_plane.X() <<std::endl;
@@ -1070,10 +1106,10 @@ double distToVtx(double fTimeToCMConstant, double fWireToCMConstant, double radi
 	return dist_from_vtx;
 }//distToVtx
 
-double distToVtx2d(TVector2 my_point, TVector2 vertex){
-	TVector2 dist = vertex-my_point;
-	return dist.Mod();
-}
+//double distToVtx2d(TVector2 my_point, TVector2 vertex){
+//	TVector2 dist = vertex-my_point;
+//	return dist.Mod();
+//}
 
 //takes the distance to the vertex of a hit on a given plane and the radius
 //returns true if hit is in ROI, false otherwise
@@ -1181,41 +1217,80 @@ std::vector<std::array<double, 3>> Circle3D(const TVector3& centerPos, const TVe
 //gets the two other vertices of a shower for a given plane by computing a circle in 3D
 //and then projecting each point to a given plane
 //The two points furtherest away from the shower start in either direction are taken to be the vertices
-std::vector<TVector2>* getMinMaxShowerPlane(std::vector<std::array<double, 3>> coneRim,int plane, int fTPC, int fCryostat, geo::GeometryCore const& geo, detinfo::DetectorProperties const& detprop, TVector2 shower_start_plane, std::vector<TVector2>* min_max){
-	std::vector<TVector2> plane_points; 
+std::vector<TVector2> getMinMaxShowerPlane(std::vector<std::array<double, 3>> coneRim,int plane, int fTPC, int fCryostat, geo::GeometryCore const& geo, detinfo::DetectorProperties const& detprop, TVector2 shower_start_plane, std::vector<TVector2> min_max){
+//	TVector2 first =  TVector2(1, 1);
+//	std::vector<TVector2> plane_points{first};
+	std::vector<TVector2> plane_points;	
+	std::cout<<"flag.seg.0"<<std::endl; 
 	for(std::array<double, 3> point : coneRim ){
+	//	std::cout<<"flag.seg.1"<<std::endl;
 		//calc 2d point of cone rim
 		double x = point.at(0);
 		double y = point.at(1);
 		double z = point.at(2);
-
+	//	std::cout<<"flag.seg.2"<<std::endl;
 		TVector2 this_point_2d = TVector2(calcTime(x, plane, fTPC,fCryostat, detprop), calcWire(y, z, plane, fTPC, fCryostat, geo));
+		std::cout<<"this 2d point on the circle = "<<this_point_2d.X()<<" "<<this_point_2d.Y()<<std::endl;
+	//	std::cout<<"flag.seg.3"<<std::endl;
 		plane_points.push_back(this_point_2d);
-			
+	//	int ind = plane_points.size()-1;
+	//	if (ind>=0){
+	//		std::cout<<"at index "<<ind<<" the address is "<<&plane_points[ind]<<std::endl;
+	//	}		
 	}
+	//for (size_t vtx_index = 0; vtx_index != coneRim.size(); ++vtx_index){
+	//	std::vector<TVector2>* plane_points_copy = plane_points;
+	//	std::cout<<"this address = "<<std::to_string(plane_points_copy)<<std::endl;
+	//	plane_points_copy++;
+	//}
+	//std::cout<<"this address = "<<&item<<std::endl;
+	return plane_points;
+	//min_max = &plane_points;
+	//return *min_max;
+	//return plane_points;
 	//find min and max of rim
-	TVector2 min = plane_points.at(0);
-	TVector2 max = plane_points.at(0);
-	double dist_min = distToVtx2d(min, shower_start_plane);
-	double dist_max = distToVtx2d(max, shower_start_plane);
-		
-	for(TVector2 vec:plane_points){
-		double this_dist = distToVtx2d(vec, shower_start_plane);
-		if (this_dist<dist_min){
-			dist_min=this_dist;
-			min = vec;
-		}	
-		if (this_dist>dist_max){
-			dist_max=this_dist;
-			max= vec;
-		}	
-	}
+	//TVector2 min = plane_points.at(0);
+	//TVector2 max = plane_points.at(0);
+//	TVector2 max_x_vec = plane_points.at(0);
+//	TVector2 max_y_vec = plane_points.at(0);
+
+	//double dist_min = distToVtx2d(min, shower_start_plane);
+	//double dist_max = distToVtx2d(max, shower_start_plane);
+//	double start_x_plane = shower_start_plane.X();
+//	double start_y_plane = shower_start_plane.Y();
+
+
+//	double dist_x_xmax =  abs(start_x_plane - max_x_vec.X());
+	//double dist_y_xmax = ;
+	//double dist_x_ymax = ;
+//	double dist_y_ymax =  abs(start_y_plane - max_y_vec.Y());
+
+//	for(TVector2 vec:plane_points){
+//		double this_x = vec.X();
+//		double this_x_dist = abs(start_x_plane - this_x);
+
+//		double this_y = vec.Y();
+//		double this_y_dist = abs(start_y_plane - this_y);
+
+		//double this_dist = distToVtx2d(vec, shower_start_plane);
+		//std::cout<<"the dist of this point on the circle to the shower start is "<<this_dist<<std::endl;
+//		if (this_y_dist>dist_y_ymax){
+//			dist_y_ymax=this_y_dist;
+//			std::cout<<"updating y max dist to "<<dist_y_ymax<<std::endl;
+//			max_y_vec = vec;
+//		}	
+//		if (this_x_dist>dist_x_xmax){
+//			dist_x_xmax=this_x_dist;
+//			std::cout<<"updating x max dist to "<<dist_x_xmax<<std::endl;
+//			max_x_vec= vec;
+//		}	
+//	}
 	
-	std::vector<TVector2> this_min_max;
-	this_min_max.push_back(min);
-	this_min_max.push_back(max);
-	min_max = &this_min_max;
-	return min_max;
+//	std::vector<TVector2> this_min_max;
+//	this_min_max.push_back(max_x_vec);
+//	this_min_max.push_back(max_y_vec);
+//	min_max = &this_min_max;
+//	return min_max;
 }
 
 //converts radius for ROI in units of time and wire from sm
