@@ -62,6 +62,8 @@ bool matches(const recob::Hit* Hit, const recob::Hit* ssHit);
 double distToVtx(double fTimeToCMConstant, double fWireToCMConstant, double radius, double vertex_time, double vertex_wire, const recob::Hit*  hit);
 //double distToVtx2d(TVector2 my_point, TVector2 vertex);
 bool inROI(double radius, double dist);
+std::vector<TVector2> drawROI(double fTimeToCMConstant, double fWireToCMConstant, double radius, double vertex_time, double vertex_wire);
+std::vector<TVector2> drawEllipse(double start_x, double start_y, double ax_x, double ax_y);
 double calcWire(double Y, double Z, int plane, int fTPC, int fCryostat, geo::GeometryCore const& geo );
 TVector3 findEnd(TVector3* shower_start, double* shower_length, TVector3* shower_dir);
 double calcTime(double X,int plane,int fTPC,int fCryostat, detinfo::DetectorProperties const& detprop);
@@ -296,6 +298,7 @@ SSNetTest::SSNetTest(Parameters const& config) // Initialize member data here.
    // fb.open ("test.txt",std::ios::out);
   //  os(&fb);
     out_stream << "Test sentence\n";
+    out_stream<<"radius "<<fRadius<<" wiretocm "<<fWireToCMConstant<<" timetocm "<<fTimeToCMConstant<<"\n";
     //fb.close();
 
     // Get the detector length, to determine the maximum bin edge of one
@@ -734,6 +737,10 @@ std::vector<TVector3> TrackEnd;
 
 	        TrackStart.push_back(current_vtx);
 		TrackEnd.push_back(current_end);
+
+		//std::cout<<"this track first point = "<<current_trk.FirstPoint()<<std::endl;
+		//std::cout<<"this track last point = "<<current_trk.LastPoint()<<std::endl;
+		//std::cout<<"this track has N points = "<<current_trk.NPoints()<<std::endl;
 		
 		int number_matched_trk_hits = 0;
 		if (start == current_start){
@@ -878,9 +885,14 @@ for ( size_t vtx_index = 0; vtx_index != my_vtxs.size(); ++vtx_index ){
 			my_out+= " " + std::to_string(item.Y()) + " " +  std::to_string(item.X()) + " ";
 			//std::cout<<"my_out = "<<my_out<<std::endl;
 		}				
-		std::cout<<"my_out = "<<my_out<<std::endl;
+		//std::cout<<"my_out = "<<my_out<<std::endl;
 
 		out_stream<<"shower "<<vtx_index<<" plane "<<plane<<" startwt "<<shower_start_plane.Y()<<" "<<shower_start_plane.X()<<""<<my_out<<"\n";
+
+		std::vector<TVector2> points_ROI_this_plane = drawROI(fTimeToCMConstant, fWireToCMConstant,fRadius, time,wire);
+		for (auto const& edge_point: points_ROI_this_plane){
+			std::cout<<"this 2d point on the ROI edge = "<<edge_point.X()<<" "<<edge_point.Y()<<std::endl;	
+		}
 		
 		TVector2 shower_direction_plane = calcNormVec(shower_start_plane, shower_end_plane); 
 		
@@ -1123,6 +1135,41 @@ bool inROI(double radius, double dist ){
 	}
 }//inROI
 
+//for a given vertex, ROI radius length, and plane, returns a set of 2D points outlining the ROI
+std::vector<TVector2> drawROI(double fTimeToCMConstant, double fWireToCMConstant, double radius, double vertex_time, double vertex_wire){
+	//constexpr unsigned short nRimPts = 16;
+	//std::vector<TVector2, (nRimPts + 1)> rimPts;
+	double rad_time = fTimeToCMConstant*radius;
+	double rad_wire = fWireToCMConstant* radius;
+	std::vector<TVector2> points = drawEllipse(vertex_wire, vertex_time, rad_wire, rad_time);
+	return points;
+}//draw ROI
+
+
+std::vector<TVector2> drawEllipse(double start_x, double start_y, double ax_x, double ax_y){
+	int nRimPts = 16;
+	std::vector<TVector2> my_pts; 
+	double x_inc = 2*ax_x/nRimPts;
+	//std::cout<<"a= "<<ax_x<<", b= "<<ax_y<<std::endl;
+	//std::cout<<"the x inrement is "<<x_inc<<std::endl;
+	double coeff = ax_y/ax_x;
+	//std::cout<<"the b/a coeff where a>b = "<<coeff<<std::endl;
+	for (int i = -nRimPts/2; i <= nRimPts/2; ++i){
+		double this_x = start_x + i*x_inc;
+		double x_minus_start = this_x - start_x;
+		double sqrt_term1 = pow(ax_y,2);
+		double sqrt_term2 = pow(coeff, 2)*pow(x_minus_start,2);
+		//std::cout<<"the first term under the radical = "<<sqrt_term1<<" and the second term under the radical = "<<sqrt_term2<<std::endl;
+		double term2 = sqrt(sqrt_term1 - sqrt_term2);
+		double y_plus = start_y + term2;
+		double y_minus= start_y - term2;
+		//std::cout<<"term 1 = "<<this_x<<" and term 2 = "<<term2<<std::endl;
+		my_pts.push_back(TVector2(this_x, y_plus));
+		my_pts.push_back(TVector2(this_x, y_minus));
+	}
+	return my_pts;
+}//draw ellipse
+
 //given the shower start, direction, and length, calculates an approximate end point in 3D
 TVector3 findEnd(TVector3* shower_start, double* shower_length, TVector3* shower_dir){
 	//scale the direction by the length
@@ -1230,7 +1277,7 @@ std::vector<TVector2> getMinMaxShowerPlane(std::vector<std::array<double, 3>> co
 		double z = point.at(2);
 	//	std::cout<<"flag.seg.2"<<std::endl;
 		TVector2 this_point_2d = TVector2(calcTime(x, plane, fTPC,fCryostat, detprop), calcWire(y, z, plane, fTPC, fCryostat, geo));
-		std::cout<<"this 2d point on the circle = "<<this_point_2d.X()<<" "<<this_point_2d.Y()<<std::endl;
+	//	std::cout<<"this 2d point on the circle = "<<this_point_2d.X()<<" "<<this_point_2d.Y()<<std::endl;
 	//	std::cout<<"flag.seg.3"<<std::endl;
 		plane_points.push_back(this_point_2d);
 	//	int ind = plane_points.size()-1;
