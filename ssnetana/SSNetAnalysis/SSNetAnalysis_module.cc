@@ -452,14 +452,51 @@ SSNetTest::SSNetTest(Parameters const& config) // Initialize member data here.
     //set to start of the input file
     in_stream.clear();
     in_stream.seekg(0, in_stream.beg);
-    std::cout<<"the position in the sequnce is "<<in_stream.tellg()<<std::endl; 
+    //std::cout<<"the position in the sequnce is "<<in_stream.tellg()<<std::endl; 
    
     //find corresponding line in .txt input file for this event
+    bool matched= false;	
+    std::vector<std::string> words_in_line;
     while ( getline (in_stream,line) )
     {
-     	nlines++;
+	words_in_line.clear();	
+	int this_word= 0;
+	std::istringstream iss(line);
+//	std::vector<std::string> words_in_line;
+	do {
+        	std::string subs;
+        	iss >> subs;
+        	//if (word == 0 && subs!= std::to_string(fRun)){continue;}
+		//std::cout << "Substring at word "<<this_word<<" is: " << subs <<std::endl;
+		words_in_line.push_back(subs);	
+		this_word++;
+    	} while (iss);  
+
+	if (words_in_line[0] == std::to_string(fRun) && words_in_line[1] == std::to_string(fSubRun) && words_in_line[2]==std::to_string(fEvent)){
+		std::cout<<"Matched: "<<words_in_line[0]<<", "<<words_in_line[1]<<", "<<words_in_line[2]<<std::endl;
+		matched = true;
+		break;
+		}
+   	nlines++;
 //	std::cout << line <<std::endl;
     }
+
+    //if there isn't a match in the vertex file, skip this event
+    if (matched == false){
+	std::cout<<"ERROR: no match for this event was found: "<<std::endl;
+	std::cout<<fRun<<", "<<fSubRun<<", "<<fEvent<<std::endl;
+	std::cout<<"Skipping this event"<<std::endl;
+//	break;
+	//exit(0);
+    }else{
+	
+    
+    double vertex_x = std::stod (words_in_line[3], 0);
+    double vertex_y = std::stod (words_in_line[4], 0);
+    double vertex_z = std::stod (words_in_line[5], 0);
+
+    std::cout<<"single photon vertex = "<<vertex_x<<", "<<vertex_y<<", "<<vertex_z<<std::endl;
+
     //close input .txt file
     //in_stream.close();
     std::cout<<"the number of events in the input file is: "<<nlines<<std::endl; 
@@ -1110,6 +1147,7 @@ std::map< int, const simb::MCParticle* > particleMap;
 	  << "findManyHits recob::Hit for recob::Cluster failed;"
 	  << " cluster label='" << fClusterProducerLabel << "'";
       }
+ }//if there's a matching single photon event
  } // SSNetTest::analyze()
  
 void SSNetTest::endJob(){
@@ -1122,7 +1160,6 @@ void SSNetTest::endJob(){
   // This macro has to be defined for this module to be invoked from a
   // .fcl file; see SSNetTest.fcl for more information.
   DEFINE_ART_MODULE(SSNetTest)
-
 } // namespace example
 } // namespace lar 
 
