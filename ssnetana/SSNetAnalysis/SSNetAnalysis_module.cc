@@ -148,7 +148,12 @@ namespace example {
    fhicl::Atom<double> TimeToCMConstant {
 	Name("TimeToCMConstant"),
 	Comment("conversion factor for time # to cm")
- };  
+ };
+  
+   fhicl::Atom<std::string> InputVertexFile {
+        Name("InputVertexFile"),
+        Comment(".txt file containing information about the single photon vertices")
+	};  
 };//struct
     
      using Parameters = art::EDAnalyzer::Table<Config>;
@@ -161,9 +166,12 @@ namespace example {
     virtual void endJob() override;
 
   private:
-        
-     //fb.open ("test.txt",std::ios::out);
-    std::ofstream out_stream;
+  	
+   //io stream to write to .txt file for EVD      
+   std::ofstream out_stream;
+
+   //io stream to read from .txt file containing single photon vertex, shower, and track params
+   std::ifstream in_stream;
     
     // The parameters we'll read from the .fcl file.
     art::InputTag fSimulationProducerLabel; ///< The name of the producer that tracked simulated particles through the detector
@@ -181,6 +189,7 @@ namespace example {
     double fRadius; //radius of ROI in cm
     double fWireToCMConstant; //converstion factor wire to cm
     double fTimeToCMConstant; //converstion factor time to cm
+    std::string fInputVertexFile;//contains list of vertex for events
 
 // vector of shower-like hit indices
 //   std::vector<size_t> _shrhits;
@@ -267,6 +276,7 @@ SSNetTest::SSNetTest(Parameters const& config) // Initialize member data here.
 	, fRadius			  (config().Radius())
 	, fWireToCMConstant		  (config().WireToCMConstant())
 	, fTimeToCMConstant		  (config().TimeToCMConstant())
+	, fInputVertexFile	       	  (config().InputVertexFile())
 	// fInHitProducer   = p.get<std::string>("InHitProducer","gaushit");
         //fPxThresholdHigh = p.get<double>     ("PxThresholdHigh"        );
         //fPxThresholdLow  = p.get<double>     ("PxThresholdLow"         );
@@ -284,14 +294,20 @@ SSNetTest::SSNetTest(Parameters const& config) // Initialize member data here.
      fDetprop = lar::providerFrom<detinfo::DetectorPropertiesService>();
      //gser = lar::providerFrom<util::GeometryUtilities>();
 
-    //initialize ostream
+    //initialize io stream for printing to output
     out_stream.open("test.txt");
     if (!out_stream.is_open()){
-	std::cout<<"ERROR file not open"<<std::endl;
+	std::cout<<"ERROR output file not open"<<std::endl;
 	exit(0);
 	}
-    
-    
+
+    //initialize io stream for reading from input, quit if file not opened properly
+    in_stream.open(fInputVertexFile);
+    if (!out_stream.is_open()){
+      std::cout<<"ERROR input file not open: "<<fInputVertexFile<<std::endl;
+      exit(0);
+    }
+
  }
 
 
