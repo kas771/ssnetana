@@ -491,11 +491,15 @@ SSNetTest::SSNetTest(Parameters const& config) // Initialize member data here.
     }else{
 	
     
-    double vertex_x = std::stod (words_in_line[3], 0);
-    double vertex_y = std::stod (words_in_line[4], 0);
-    double vertex_z = std::stod (words_in_line[5], 0);
+    TVector3 vertex = TVector3(std::stod (words_in_line[3], 0), std::stod (words_in_line[4], 0), std::stod (words_in_line[5], 0));
+    //double vertex_y = std::stod (words_in_line[4], 0);
+    //double vertex_z = std::stod (words_in_line[5], 0);
 
-    std::cout<<"single photon vertex = "<<vertex_x<<", "<<vertex_y<<", "<<vertex_z<<std::endl;
+    TVector3 track_vertex_dir = TVector3(std::stod (words_in_line[6], 0), std::stod (words_in_line[7], 0), std::stod (words_in_line[8], 0));
+    TVector3 shower_start = TVector3(std::stod (words_in_line[9], 0), std::stod (words_in_line[10], 0), std::stod (words_in_line[11], 0));
+    TVector3 shower_dir = TVector3(std::stod (words_in_line[12], 0), std::stod (words_in_line[13], 0), std::stod (words_in_line[14], 0));
+
+    std::cout<<"single photon vertex = "<<vertex.X()<<", "<<vertex.Y()<<", "<<vertex.Z()<<std::endl;
 
     //close input .txt file
     //in_stream.close();
@@ -620,7 +624,8 @@ std::cout<<"The number of entries = "<<fmytree->GetEntries()<<std::endl;
  
  // std::cout<<"number of PFParticles: "<<PFPHandle->size()<<std::endl;
   //for each PFP
-  std::cout<<PFPHandle->size()<<std::endl;
+  
+ std::cout<<PFPHandle->size()<<std::endl;
   for ( size_t pfp_index = 0; pfp_index != PFPHandle->size(); ++pfp_index ){
 	auto const& pfp = PFPHandle->at(pfp_index);
 	int pdg = pfp.PdgCode();
