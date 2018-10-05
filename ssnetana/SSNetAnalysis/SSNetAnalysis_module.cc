@@ -303,7 +303,7 @@ SSNetTest::SSNetTest(Parameters const& config) // Initialize member data here.
 
     //initialize io stream for reading from input, quit if file not opened properly
     in_stream.open(fInputVertexFile);
-    if (!out_stream.is_open()){
+    if (!in_stream.is_open()){
       std::cout<<"ERROR input file not open: "<<fInputVertexFile<<std::endl;
       exit(0);
     }
@@ -444,7 +444,27 @@ SSNetTest::SSNetTest(Parameters const& config) // Initialize member data here.
     fEvent  = event.id().event(); 
     fRun    = event.run();
     fSubRun = event.subRun();
-    
+   
+    int nlines = 0;
+    std::string line;
+    line.clear();
+  
+    //set to start of the input file
+    in_stream.clear();
+    in_stream.seekg(0, in_stream.beg);
+    std::cout<<"the position in the sequnce is "<<in_stream.tellg()<<std::endl; 
+   
+    //find corresponding line in .txt input file for this event
+    while ( getline (in_stream,line) )
+    {
+     	nlines++;
+//	std::cout << line <<std::endl;
+    }
+    //close input .txt file
+    //in_stream.close();
+    std::cout<<"the number of events in the input file is: "<<nlines<<std::endl; 
+//    std::cout<<"the number of characters in the input file is: "<<in_stream.gcount()<<std::endl;
+
     std::cout<<"------- starting event: "<<fRun<<", "<<fSubRun<<", "<<fEvent<<" --------"<<std::endl;
     
     //write run subrun event to .txt
@@ -1095,6 +1115,7 @@ std::map< int, const simb::MCParticle* > particleMap;
 void SSNetTest::endJob(){
 	//fb.close();
 	out_stream.close();
+	in_stream.close();
 	std::cout<<"Ending job"<<std::endl;		
 }
   
