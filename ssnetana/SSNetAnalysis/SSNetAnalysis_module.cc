@@ -849,91 +849,97 @@ std::vector<TVector3> TrackStart;
 std::vector<TVector3> TrackEnd;
 
 bool matched_track = false;
-//for each track
+int number_matched_trk_hits = 0;
+int number_potential_matches = 0;
+int matched_track_ind = -1; //the index of the track that best matches the single photon track
+	
+//loop over each track to find best match
   for ( size_t trk_index = 0; trk_index != trackHandle->size(); ++trk_index ){
 	auto const& trk = trackHandle->at(trk_index);
 	//auto const& start  = trk.Start();
 	//for (size_t tr = 0; tr != my_trks.size(); ++tr ){
 	//clear the track list
-	_trackhitlist.clear();
-	
+
  	//auto const& current_trk = *(my_trks.at(tr));
 	//auto current_start = current_trk.Start();
-	TVector3 current_vtx = trk.Vertex();
 	TVector3 current_vtx_dir = trk.VertexDirection();
-	auto current_end = trk.End();
-
-	TrackStart.push_back(current_vtx);
-        TrackEnd.push_back(current_end);
-
 		//std::cout<<"this track first point = "<<current_trk.FirstPoint()<<std::endl;
 		//std::cout<<"this track last point = "<<current_trk.LastPoint()<<std::endl;
 		//std::cout<<"this track has N points = "<<current_trk.NPoints()<<std::endl;
 		
-	int number_matched_trk_hits = 0;
-	int number_potential_matches = 0;
-	//TVector3 track_vertex_dir;
-	if((current_vtx_dir - single_track_vertex_dir).Mag() <= 0.5){
+	double this_mag = (current_vtx_dir - single_track_vertex_dir).Mag();
+	double closest_mag = 0.5;
+	if( this_mag <= closest_mag){
 		number_potential_matches++;
 	//	track_vertex_dir = current_vtx_dir;
-		std::cout<<"potential track match, Pandora track vertex = "<<current_vtx_dir.X()<<", "<<current_vtx_dir.Y()<<", "<<current_vtx_dir.Z()<<std::endl;
+		std::cout<<"potential track match at index = "<<trk_index<<", track vertex = "<<current_vtx_dir.X()<<", "<<current_vtx_dir.Y()<<", "<<current_vtx_dir.Z()<<std::endl;
+		closest_mag = this_mag;
+		matched_track_ind = trk_index;
+		matched_track= true;
 	}
+}//get matched track
 
-	if(number_potential_matches > 1){
-		std::cout<<"ERROR: multiple track matches"<<std::endl;
-	}
+std::cout<<"the best matched track index is currently "<<matched_track_ind<<std::endl;
 
-	if(number_potential_matches ==1){
+//for the matched track, read values
+auto const& trk = trackHandle->at(matched_track_ind);
+_trackhitlist.clear();
+TVector3 current_vtx = trk.Vertex();
+auto current_end = trk.End();
+
+TrackStart.push_back(current_vtx);
+TrackEnd.push_back(current_end);
+
+
+//if(number_potential_matches > 1){
+//	std::cout<<"ERROR: multiple track matches"<<std::endl;
+//}
+
+if(matched_track_ind != -1){
 //	if (current_vtx_dir == single_track_vertex_dir){
-		std::cout<<"matched tracks!"<<std::endl;
-		matched_track = true;	
+	std::cout<<"matched tracks!"<<std::endl;
+//		matched_track = true;	
 		//std::cout<<"flag2.0.1"<<std::endl;
 			//std::cout<<"the shower length is  = "<<shr.Length()<<", and the opening angle is = "<<shr.OpenAngle()<<std::endl;
 			
 		//get the associated hits for the track
-		const std::vector<art::Ptr<recob::Hit> > trk_hit_v = trk_hit_assn_v.at(trk_index);
-		fnum_hits_track = trk_hit_v.size();
-		std::cout<<"the number of hits in the track = "<<fnum_hits_track<<std::endl;		 
+	const std::vector<art::Ptr<recob::Hit> > trk_hit_v = trk_hit_assn_v.at(matched_track_ind);
+	fnum_hits_track = trk_hit_v.size();
+	std::cout<<"the number of hits in the track = "<<fnum_hits_track<<std::endl;		 
 		
 			//std::cout<<"flag2.1.0"<<std::endl;	
 			//for each hit
-		for (size_t h=0; h < trk_hit_v.size(); h++){
-			auto const hit = *(trk_hit_v.at(h));
-			const recob::Hit* this_hit = &hit;
+	for (size_t h=0; h < trk_hit_v.size(); h++){
+	auto const hit = *(trk_hit_v.at(h));
+	const recob::Hit* this_hit = &hit;
 				//float this_channel = this_hit.Channel();
 				
 			//if hit is in the hit map, put it in the track hit map
-			for (auto const& item : _hitlist){
-					//_hitmap.erase(this_time);
-					//std::cout<<"flag2.1.0.1"<<std::endl;
-				auto const stored_hit = (std::get<0>(item));
-				if(matches(this_hit, stored_hit)== true){
+		for (auto const& item : _hitlist){
+			auto const stored_hit = (std::get<0>(item));
+			if(matches(this_hit, stored_hit)== true){
 				number_matched_trk_hits++;
-						//std::cout<<"flag2.1.1"<<std::endl;
-						//std::cout<<"the item to be removed is "<<std::get<0>(item) <<", "<<std::get<1>(item)<<std::endl;
-						//_hitlist.remove(item);
-					_trackhitlist.push_back(item);
-						//std::cout<<"flag2.1.2"<<std::endl;
-					break;
-				}
+				_trackhitlist.push_back(item);
+				break;
 			}
-
-		}//for each hit
-		//std::cout<<"flag 2.1.3"<<std::endl;
-		fnum_sshits_track = number_matched_trk_hits;
-		fratio_hits_track = (double)fnum_sshits_track/fnum_hits_track;
-		//std::cout<<"flag 2.1.4"<<std::endl;
-		fselectTree->Fill();	
-	
-		std::cout<<"the number of matched shr hits in the track = "<<number_matched_trk_hits<<std::endl;
-		std::cout<<"the number of matched shr hits in the track list = "<<_trackhitlist.size()<<std::endl;
-		if ((unsigned int)number_matched_trk_hits !=_trackhitlist.size()){
-			std::cout<<"warning, number of hits in track don't match"<<std::endl;
 		}	
 
-	}//if the tracks match
+	}//for each hit
+		//std::cout<<"flag 2.1.3"<<std::endl;
+	fnum_sshits_track = number_matched_trk_hits;
+	fratio_hits_track = (double)fnum_sshits_track/fnum_hits_track;
+		//std::cout<<"flag 2.1.4"<<std::endl;
+	fselectTree->Fill();	
+	
+	std::cout<<"the number of matched shr hits in the track = "<<number_matched_trk_hits<<std::endl;
+	std::cout<<"the number of matched shr hits in the track list = "<<_trackhitlist.size()<<std::endl;
+	if ((unsigned int)number_matched_trk_hits !=_trackhitlist.size()){
+		std::cout<<"warning, number of hits in track don't match"<<std::endl;
+	}	
+
+}//if the tracks match
 		
-}//for each track from a 1 shower 1 track topology 
+//}//for each track from a 1 shower 1 track topology 
 //}//for each track
 if(matched_track == false){
 	std::cout<<"there was no matched track"<<std::endl;
