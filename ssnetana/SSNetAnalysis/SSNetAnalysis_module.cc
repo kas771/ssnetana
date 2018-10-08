@@ -444,11 +444,21 @@ SSNetTest::SSNetTest(Parameters const& config) // Initialize member data here.
     fEvent  = event.id().event(); 
     fRun    = event.run();
     fSubRun = event.subRun();
+    
+    std::cout<<"------- starting event: "<<fRun<<", "<<fSubRun<<", "<<fEvent<<" --------"<<std::endl;
+     
+ /*
+ *
+ * Find matching event in the input file and read in vertex, shower, and track
+ *
+ * */
    
+    //initialize line
     int nlines = 0;
     std::string line;
     line.clear();
-  
+ 
+
     //set to start of the input file
     in_stream.clear();
     in_stream.seekg(0, in_stream.beg);
@@ -491,27 +501,32 @@ SSNetTest::SSNetTest(Parameters const& config) // Initialize member data here.
     }else{
 	
     
-    TVector3 vertex = TVector3(std::stod (words_in_line[3], 0), std::stod (words_in_line[4], 0), std::stod (words_in_line[5], 0));
-    //double vertex_y = std::stod (words_in_line[4], 0);
-    //double vertex_z = std::stod (words_in_line[5], 0);
+    TVector3 single_vertex = TVector3(std::stof (words_in_line[3], 0), std::stof (words_in_line[4], 0), std::stof (words_in_line[5], 0));
+    //double vertex_y = std::stof (words_in_line[4], 0);
+    //double vertex_z = std::stof (words_in_line[5], 0);
 
-    TVector3 track_vertex_dir = TVector3(std::stod (words_in_line[6], 0), std::stod (words_in_line[7], 0), std::stod (words_in_line[8], 0));
-    TVector3 shower_start = TVector3(std::stod (words_in_line[9], 0), std::stod (words_in_line[10], 0), std::stod (words_in_line[11], 0));
-    TVector3 shower_dir = TVector3(std::stod (words_in_line[12], 0), std::stod (words_in_line[13], 0), std::stod (words_in_line[14], 0));
+    TVector3 single_track_vertex_dir = TVector3(std::stof (words_in_line[6], 0), std::stof (words_in_line[7], 0), std::stof (words_in_line[8], 0));
+    TVector3 single_shower_start = TVector3(std::stof (words_in_line[9], 0), std::stof (words_in_line[10], 0), std::stof (words_in_line[11], 0));
+    TVector3 single_shower_dir = TVector3(std::stof (words_in_line[12], 0), std::stof (words_in_line[13], 0), std::stof (words_in_line[14], 0));
 
-    std::cout<<"single photon vertex = "<<vertex.X()<<", "<<vertex.Y()<<", "<<vertex.Z()<<std::endl;
+    std::cout<<"single photon vertex = "<<single_vertex.X()<<", "<<single_vertex.Y()<<", "<<single_vertex.Z()<<std::endl;
+    std::cout<<"single photon track vertex = "<<single_track_vertex_dir.X()<<", "<<single_track_vertex_dir.Y()<<", "<<single_track_vertex_dir.Z()<<std::endl;
+    std::cout<<"single photon shower start = "<<single_shower_start.X()<<", "<<single_shower_start.Y()<<", "<<single_shower_start.Z()<<std::endl;
 
     //close input .txt file
     //in_stream.close();
     std::cout<<"the number of events in the input file is: "<<nlines<<std::endl; 
 //    std::cout<<"the number of characters in the input file is: "<<in_stream.gcount()<<std::endl;
-
-    std::cout<<"------- starting event: "<<fRun<<", "<<fSubRun<<", "<<fEvent<<" --------"<<std::endl;
-    
+  
     //write run subrun event to .txt
     //std::ostream os(&fb);
     out_stream <<"run subrun event "<<fRun<<" "<<fSubRun<<" "<<fEvent<<"\n";
 
+/*
+ *
+ * Read in associations for Pandora objects
+ *
+ * */
 
    //read in PFParticles
    art::ValidHandle< std::vector<recob::PFParticle> > PFPHandle
@@ -614,17 +629,18 @@ fmytree->Fill();
 std::cout<<"The number of entries = "<<fmytree->GetEntries()<<std::endl;
  
 /*
- * loop over PFParticles and find 1 shower 1 track topologies
+ * loop over tracks and showers in and find the 1 shower 1 track for each single photon vertex
  *
  */
 
-  std::vector<art::Ptr<recob::Track>> my_trks; //vector of pointers to tracks in case of 1 shower 1 track events
-  std::vector<art::Ptr<recob::Shower>> my_shrs; //vector of pointers to tracks in case of 1 shower 1 track events
-  std::vector<double*> my_vtxs; //vector of pointers to the first element in a double for the vertex XYZ position (3D)
+  //std::vector<art::Ptr<recob::Track>> my_trks; //vector of pointers to tracks in case of 1 shower 1 track events
+  //std::vector<art::Ptr<recob::Shower>> my_shrs; //vector of pointers to tracks in case of 1 shower 1 track events
+  //std::vector<double*> my_vtxs; //vector of pointers to the first element in a double for the vertex XYZ position (3D)
+
  
  // std::cout<<"number of PFParticles: "<<PFPHandle->size()<<std::endl;
   //for each PFP
-  
+/*
  std::cout<<PFPHandle->size()<<std::endl;
   for ( size_t pfp_index = 0; pfp_index != PFPHandle->size(); ++pfp_index ){
 	auto const& pfp = PFPHandle->at(pfp_index);
@@ -720,13 +736,16 @@ std::cout<<"The number of entries = "<<fmytree->GetEntries()<<std::endl;
 		//delete[] xyz;
 	} //for each vertex
 }//for each PFP
+*/
 
-std::cout<<"the number of stored vertices, tracks, and showers = "<<my_vtxs.size()<<", "<<my_trks.size()<<", "<<my_shrs.size()<<std::endl;
+
+//std::cout<<"the number of stored vertices, tracks, and showers = "<<my_vtxs.size()<<", "<<my_trks.size()<<", "<<my_shrs.size()<<std::endl;
 
 /* 
- * Associate shrhits matched with hits in the shower and track
+ * Find the Pandora track and shower corresponding to the single photon vertex
+ * and associate shrhits matched with hits in the shower and track
+ *
  */
-
 
 //std::cout<<"checking shower"<<std::endl;
 //if(showerHandle->size() != 0) { //skip events with no shower
@@ -734,74 +753,87 @@ std::vector<TVector3> ShowerDir;
 std::vector<double> ShowerLen;
 std::vector<TVector3> ShowerStart;
 std::vector<double> ShowerAng;
- 
+
+bool matched_showers =false;
+//for each shower in the event 
   for ( size_t shr_index = 0; shr_index != showerHandle->size(); ++shr_index ){
 	auto const& shr = showerHandle->at(shr_index);
-	auto const& start  = shr.ShowerStart();
-	for (size_t s = 0; s != my_shrs.size(); ++s ){
-		
-		auto const& current_shr = *(my_shrs.at(s));
-		auto const& current_start = current_shr.ShowerStart();
-		if (start == current_start){
-			std::cout<<"matched showers"<<std::endl;
-			std::cout<<"the shower length is  = "<<shr.Length()<<", and the opening angle is = "<<shr.OpenAngle()<<std::endl;
-			_showerhitlist.clear();	
-			 //get the associated hits for the shower
+	//auto const& start  = shr.ShowerStart();
+	//auto const& dir = shr.Direction();
+	TVector3 start  = shr.ShowerStart();
+	TVector3 dir = shr.Direction();
+	
+	//skip if the shower does not match the single photon vertex shower
+	if (start!=single_shower_start && dir!= single_shower_dir){
+		continue;
+	}
+	std::cout<<"matched showers!"<<std::endl;
+	std::cout<<"pandora shower start = "<<start.X()<<", "<<start.Y()<<", "<<start.Z()<<std::endl;
+	matched_showers=true;
+
+	//store info about the single photon shower
+	ShowerStart.push_back(start);
+
+	auto this_len = shr.Length();
+	ShowerLen.push_back(this_len);
+
+	ShowerDir.push_back(dir);
+
+	auto this_ang = shr.OpenAngle();
+	ShowerAng.push_back(this_ang);
+	std::cout<<"the shower direction X component = "<<dir.X()<<std::endl;
+	
+	//store info about the hits in the shower
+	//for (size_t s = 0; s != my_shrs.size(); ++s ){
+	//	auto const& current_shr = *(my_shrs.at(s));
+	//	auto const& current_start = current_shr.ShowerStart();
+	//	if (start == current_start){
+	//		std::cout<<"matched showers"<<std::endl;
+	std::cout<<"the shower length is  = "<<shr.Length()<<", and the opening angle is = "<<shr.OpenAngle()<<std::endl;
+	_showerhitlist.clear();	
+	//get the associated hits for the shower
 			 //const std::vector<art::Ptr<recob::Hit> > shr_hit_v = shr_hit_assn_v.at(shr_index);
-			 auto shr_hit_v = shr_hit_assn_v.at(shr_index);
-			fnum_hits_shower = shr_hit_v.size();
-			std::cout<<"the number of hits in the shower = "<<fnum_hits_shower<<std::endl;		 
-			int num_sshit_in_shower = 0;
+	auto shr_hit_v = shr_hit_assn_v.at(shr_index);
+	fnum_hits_shower = shr_hit_v.size();
+	std::cout<<"the number of hits in the shower = "<<fnum_hits_shower<<std::endl;		 
+	int num_sshit_in_shower = 0;
 			
-			auto this_start = current_shr.ShowerStart();
-			ShowerStart.push_back(this_start);
-
-			auto this_len = current_shr.Length();
-			ShowerLen.push_back(this_len);
-
-			auto this_dir = current_shr.Direction();
-			ShowerDir.push_back(this_dir);
-
-			auto this_ang = current_shr.OpenAngle();
-			ShowerAng.push_back(this_ang);
-			std::cout<<"the shower direction X component = "<<this_dir.X()<<std::endl;
-		
-			//for each hit
-			 for (size_t h=0; h < shr_hit_v.size(); h++){
-			 	auto const hit = *(shr_hit_v.at(h)); //get the hit from the pointer in the vector
-				const recob::Hit* this_hit = &hit; //get the address to the hit that was stored in the vector
+	
+	//check if each associated hit is an ssnet hit
+	for (size_t h=0; h < shr_hit_v.size(); h++){
+		auto const hit = *(shr_hit_v.at(h)); //get the hit from the pointer in the vector
+		const recob::Hit* this_hit = &hit; //get the address to the hit that was stored in the vector
 			
-				//in the hit list, add corresponding shr hits to the shower list
-				for(auto const& item : _hitlist){
-					auto const stored_hit = (std::get<0>(item));
-					if(matches(this_hit, stored_hit)==true){
+		//in the hit list, add corresponding shr hits to the shower list
+		for(auto const& item : _hitlist){
+			auto const stored_hit = (std::get<0>(item));
+			if(matches(this_hit, stored_hit)==true){
 						//std::cout<<"removing shower hit"<<std::endl;	
 						//_hitlist.remove(item);
-						_showerhitlist.push_back(item);
-						num_sshit_in_shower++;
-						break;
-					}	
-				}
-
-			}//for each hit
-			fnum_sshits_shower = num_sshit_in_shower;
+				_showerhitlist.push_back(item);
+				num_sshit_in_shower++;
+				break;
+			}	
+		}
+	}//for each hit
+	fnum_sshits_shower = num_sshit_in_shower;
 
 		//	if (num_sshit_in_shower > 300){
 		//		std::cout<<"warning, very large number of sshits"<<std::endl;
 		//	}
 			//std::cout<<"number of remaining matched shr hits = "<<_hitlist.size()<<std::endl;
-			std::cout<<"the number of sshits in the shower = "<<fnum_sshits_shower<<std::endl;
-			std::cout<<"the number of sshits in the shower list = "<<_showerhitlist.size()<<std::endl;
-			if ((unsigned int)fnum_sshits_shower != _showerhitlist.size()){
-				std::cout<<"warning, number if sshits in the shower do not match"<<std::endl;
-			}
+	std::cout<<"the number of sshits in the shower = "<<fnum_sshits_shower<<std::endl;
+	std::cout<<"the number of sshits in the shower list = "<<_showerhitlist.size()<<std::endl;
+	if ((unsigned int)fnum_sshits_shower != _showerhitlist.size()){
+		std::cout<<"warning, number if sshits in the shower do not match"<<std::endl;
+	}
 			
-			fratio_hits_shower = (double)fnum_sshits_shower/fnum_hits_shower;
+	fratio_hits_shower = (double)fnum_sshits_shower/fnum_hits_shower;
 			//std::cout<<"the ratio of sshits to hits is "<<fratio_hits_shower<<std::endl;
 	//		fselectTree->Fill();
-		}//if the showers match
+	//}//if the showers match
 	
-	}//for each shower from a 1 shower 1 track topology 
+	//}//for each shower from a 1 shower 1 track topology 
 
 	//auto const& length = shr.Length();
 	//std::cout<<"shower length = "<<length<<std::endl;
@@ -809,66 +841,84 @@ std::vector<double> ShowerAng;
 //	auto const& start  = shr.ShowerStart();
 //	std::cout<<"shower start xyz = "<<start.X()<<", "<<start.Y()<<", "<< start.Z()<<std::endl;
 }//for each shower
-
+if (matched_showers ==false){
+	std::cout<<"there was no matched shower"<<std::endl;
+}
 
 std::vector<TVector3> TrackStart;
 std::vector<TVector3> TrackEnd;
 
+bool matched_track = false;
 //for each track
   for ( size_t trk_index = 0; trk_index != trackHandle->size(); ++trk_index ){
 	auto const& trk = trackHandle->at(trk_index);
-	auto const& start  = trk.Start();
-	for (size_t tr = 0; tr != my_trks.size(); ++tr ){
-		//clear the track list
-		_trackhitlist.clear();
+	//auto const& start  = trk.Start();
+	//for (size_t tr = 0; tr != my_trks.size(); ++tr ){
+	//clear the track list
+	_trackhitlist.clear();
 	
-		auto const& current_trk = *(my_trks.at(tr));
-		auto current_start = current_trk.Start();
-		auto current_vtx = current_trk.Vertex();
-		auto current_end = current_trk.End();
+ 	//auto const& current_trk = *(my_trks.at(tr));
+	//auto current_start = current_trk.Start();
+	TVector3 current_vtx = trk.Vertex();
+	TVector3 current_vtx_dir = trk.VertexDirection();
+	auto current_end = trk.End();
 
-	        TrackStart.push_back(current_vtx);
-		TrackEnd.push_back(current_end);
+	TrackStart.push_back(current_vtx);
+        TrackEnd.push_back(current_end);
 
 		//std::cout<<"this track first point = "<<current_trk.FirstPoint()<<std::endl;
 		//std::cout<<"this track last point = "<<current_trk.LastPoint()<<std::endl;
 		//std::cout<<"this track has N points = "<<current_trk.NPoints()<<std::endl;
 		
-		int number_matched_trk_hits = 0;
-		if (start == current_start){
-			std::cout<<"matched tracks"<<std::endl;
-			//std::cout<<"flag2.0.1"<<std::endl;
+	int number_matched_trk_hits = 0;
+	int number_potential_matches = 0;
+	//TVector3 track_vertex_dir;
+	if((current_vtx_dir - single_track_vertex_dir).Mag() <= 0.5){
+		number_potential_matches++;
+	//	track_vertex_dir = current_vtx_dir;
+		std::cout<<"potential track match, Pandora track vertex = "<<current_vtx_dir.X()<<", "<<current_vtx_dir.Y()<<", "<<current_vtx_dir.Z()<<std::endl;
+	}
+
+	if(number_potential_matches > 1){
+		std::cout<<"ERROR: multiple track matches"<<std::endl;
+	}
+
+	if(number_potential_matches ==1){
+//	if (current_vtx_dir == single_track_vertex_dir){
+		std::cout<<"matched tracks!"<<std::endl;
+		matched_track = true;	
+		//std::cout<<"flag2.0.1"<<std::endl;
 			//std::cout<<"the shower length is  = "<<shr.Length()<<", and the opening angle is = "<<shr.OpenAngle()<<std::endl;
 			
-			 //get the associated hits for the track
-			 const std::vector<art::Ptr<recob::Hit> > trk_hit_v = trk_hit_assn_v.at(trk_index);
-			fnum_hits_track = trk_hit_v.size();
-			std::cout<<"the number of hits in the track = "<<fnum_hits_track<<std::endl;		 
+		//get the associated hits for the track
+		const std::vector<art::Ptr<recob::Hit> > trk_hit_v = trk_hit_assn_v.at(trk_index);
+		fnum_hits_track = trk_hit_v.size();
+		std::cout<<"the number of hits in the track = "<<fnum_hits_track<<std::endl;		 
 		
 			//std::cout<<"flag2.1.0"<<std::endl;	
 			//for each hit
-			 for (size_t h=0; h < trk_hit_v.size(); h++){
-			 	auto const hit = *(trk_hit_v.at(h));
-				const recob::Hit* this_hit = &hit;
+		for (size_t h=0; h < trk_hit_v.size(); h++){
+			auto const hit = *(trk_hit_v.at(h));
+			const recob::Hit* this_hit = &hit;
 				//float this_channel = this_hit.Channel();
 				
-				//if hit is in the hit map, put it in the track hit map
-				for (auto const& item : _hitlist){
+			//if hit is in the hit map, put it in the track hit map
+			for (auto const& item : _hitlist){
 					//_hitmap.erase(this_time);
 					//std::cout<<"flag2.1.0.1"<<std::endl;
-					auto const stored_hit = (std::get<0>(item));
-					if(matches(this_hit, stored_hit)== true){
-						number_matched_trk_hits++;
+				auto const stored_hit = (std::get<0>(item));
+				if(matches(this_hit, stored_hit)== true){
+				number_matched_trk_hits++;
 						//std::cout<<"flag2.1.1"<<std::endl;
 						//std::cout<<"the item to be removed is "<<std::get<0>(item) <<", "<<std::get<1>(item)<<std::endl;
 						//_hitlist.remove(item);
-						_trackhitlist.push_back(item);
+					_trackhitlist.push_back(item);
 						//std::cout<<"flag2.1.2"<<std::endl;
-						break;
-					}
+					break;
 				}
+			}
 
-			}//for each hit
+		}//for each hit
 		//std::cout<<"flag 2.1.3"<<std::endl;
 		fnum_sshits_track = number_matched_trk_hits;
 		fratio_hits_track = (double)fnum_sshits_track/fnum_hits_track;
@@ -881,10 +931,13 @@ std::vector<TVector3> TrackEnd;
 			std::cout<<"warning, number of hits in track don't match"<<std::endl;
 		}	
 
-		}//if the tracks match
+	}//if the tracks match
 		
-	}//for each track from a 1 shower 1 track topology 
-}//for each track
+}//for each track from a 1 shower 1 track topology 
+//}//for each track
+if(matched_track == false){
+	std::cout<<"there was no matched track"<<std::endl;
+}
 
 /*
  * Look at remaining shrhits in ROI
@@ -897,21 +950,39 @@ std::vector<TVector3> TrackEnd;
 //
 	
 //for each vertex position in the vector
-for ( size_t vtx_index = 0; vtx_index != my_vtxs.size(); ++vtx_index ){
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//for ( size_t vtx_index = 0; vtx_index != my_vtxs.size(); ++vtx_index ){
 	//std::cout<<"looking at vertex # "<<vtx_index<<std::endl;
-	double* xyz_pos = my_vtxs.at(vtx_index);
+//	double* xyz_pos = my_vtxs.at(vtx_index);
 	//std::cout<<"the vertex pointer is "<<xyz_pos<<std::endl;
 	
 	//double X, Y, Z; 
-	double X = *(xyz_pos);
-	double Y = *(++xyz_pos);
-	double Z = *(++xyz_pos);
+//	double X = *(xyz_pos);
+//	double Y = *(++xyz_pos);
+//	double Z = *(++xyz_pos);
+
+//if the shower or track is missing, skip this event
+if(matched_track == true && matched_showers== true){
+	double X = single_vertex.X();
+	double Y = single_vertex.Y();
+	double Z = single_vertex.Z();
+
 	std::cout<<"the vertex XYZ = "<<X<<", "<<Y<<", "<<Z<<std::endl;
 	
 	// subset of hit <-> sshit pairs within ROI of the vertex
 	std::list<std::pair<const recob::Hit*, const recob::Hit* >>  _ROIhitlist;
 	
 	//get the associated shower direction
+ 	int vtx_index = 0;
+	
 	TVector3 shower_start = ShowerStart.at(vtx_index);
 	double shower_length = ShowerLen.at(vtx_index);
 	TVector3 shower_dir = ShowerDir.at(vtx_index);
@@ -1033,9 +1104,14 @@ std::cout<<"the number of shower hits within the ROI before removing track or sh
 //}
 fselectTree->Fill();
 
-}//loop over vertices
+//}//loop over vertices
+}//if there is a matched track and shower
+else{
+	std::cout<<"ERROR: skipping this event, missing track and/or shower"<<std::endl;
+}
 
-total_num_vertices+= my_vtxs.size();
+//total_num_vertices+= my_vtxs.size();
+total_num_vertices++;
 std::cout<<"the number processed ROI's in file = "<<total_num_vertices<<std::endl;
 
  auto particleHandle
@@ -1364,7 +1440,7 @@ std::vector<TVector2> getMinMaxShowerPlane(std::vector<std::array<double, 3>> co
 //	TVector2 first =  TVector2(1, 1);
 //	std::vector<TVector2> plane_points{first};
 	std::vector<TVector2> plane_points;	
-	std::cout<<"flag.seg.0"<<std::endl; 
+	//std::cout<<"flag.seg.0"<<std::endl; 
 	for(std::array<double, 3> point : coneRim ){
 	//	std::cout<<"flag.seg.1"<<std::endl;
 		//calc 2d point of cone rim
