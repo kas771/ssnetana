@@ -242,8 +242,14 @@ namespace example {
     int fnum_hits_track; //number of hits in a track
     double fratio_hits_track; //ratio of sshits to hits in a track
 
-    double fradial_dist_sshit_vtx; //the distance of each sshit in ROI to the vertex (shower removed)
+    double fradial_dist_sshit_vtx; //the distance of each sshit in ROI to the vertex (all sshits)
     double fopening_angle_shower_sshit; //the angle on each plane between the shower direction and the vtx-sshit
+    double fradial_dist_sshit_vtx_noshower; //the distance of each sshit in ROI to the vertex (shower removed)
+    double fopening_angle_shower_sshit_noshower; //the angle on each plane between the shower direction and the vtx-sshit
+    double fradial_dist_sshit_vtx_notrack; //the distance of each sshit in ROI to the vertex (track removed)
+    double fopening_angle_shower_sshit_notrack; //the angle on each plane between the shower direction and the vtx-sshit
+    double fradial_dist_sshit_vtx_noshowernotrack; //the distance of each sshit in ROI to the vertex (shower and track removed)
+    double fopening_angle_shower_sshit_noshowernotrack; //the angle on each plane between the shower direction and the vtx-sshit
 	 
     //int fnum_sshits_ROI_with_shower; 
  
@@ -424,7 +430,12 @@ SSNetTest::SSNetTest(Parameters const& config) // Initialize member data here.
 
     fROITree->Branch("radial_dist_sshit_vtx", &fradial_dist_sshit_vtx, "radial_dist_sshit_vtx/D");
     fROITree->Branch("fopening_angle_shower_sshit", &fopening_angle_shower_sshit, "opening_angle_shower_sshit/D");
-
+    fROITree->Branch("radial_dist_sshit_vtx_noshower", &fradial_dist_sshit_vtx_noshower, "radial_dist_sshit_vtx_noshower/D");
+    fROITree->Branch("fopening_angle_shower_sshit_noshower", &fopening_angle_shower_sshit_noshower, "opening_angle_shower_sshit_noshower/D");
+    fROITree->Branch("radial_dist_sshit_vtx_notrack", &fradial_dist_sshit_vtx_notrack, "radial_dist_sshit_vtx_notrack/D");
+    fROITree->Branch("fopening_angle_shower_sshit_notrack", &fopening_angle_shower_sshit_notrack, "opening_angle_shower_sshit_notrack/D");
+    fROITree->Branch("radial_dist_sshit_vtx_noshowernotrack", &fradial_dist_sshit_vtx_noshowernotrack, "radial_dist_sshit_vtx_noshowernotrack/D");
+    fROITree->Branch("fopening_angle_shower_sshit_noshowernotrack", &fopening_angle_shower_sshit_noshowernotrack, "opening_angle_shower_sshit_noshowernotrack/D");
 
 }   
   //-----------------------------------------------------------------------
@@ -504,6 +515,10 @@ SSNetTest::SSNetTest(Parameters const& config) // Initialize member data here.
     TVector3 single_vertex = TVector3(std::stof (words_in_line[3], 0), std::stof (words_in_line[4], 0), std::stof (words_in_line[5], 0));
     //double vertex_y = std::stof (words_in_line[4], 0);
     //double vertex_z = std::stof (words_in_line[5], 0);
+
+    _xpos = single_vertex.X();
+    _ypos = single_vertex.Y();
+    _zpos = single_vertex.Z();
 
     TVector3 single_track_vertex_dir = TVector3(std::stof (words_in_line[6], 0), std::stof (words_in_line[7], 0), std::stof (words_in_line[8], 0));
     TVector3 single_shower_start = TVector3(std::stof (words_in_line[9], 0), std::stof (words_in_line[10], 0), std::stof (words_in_line[11], 0));
@@ -1018,6 +1033,10 @@ if(matched_track == true && matched_showers== true){
 	std::cout<<"The shower length is = "<<shower_length<<std::endl;
 	std::cout<<"The calculated shower end is = "<<shower_end.X()<<", "<<shower_end.Y()<<", "<<shower_end.Z()<<std::endl;
 
+	std::vector<TVector2> shower_dir_plane;
+	std::vector<TVector2> vertex_wire_time_plane;
+	//std::vector<TVector2> vertex_time_plane;
+
 	//get track start and end point
 	TVector3 track_start = TrackStart.at(vtx_index);
 	TVector3 track_end = TrackEnd.at(vtx_index);
@@ -1032,9 +1051,14 @@ if(matched_track == true && matched_showers== true){
 		//double wire = geo->WireCoordinate(Y, Z, plane, fTPC, fCryostat);
 		//double time = detprop->ConvertXToTicks(X, plane, fTPC,fCryostat);
 		//std::cout<<"the time and wire on plane "<<plane<<" is ("<<time<<", "<<wire<<")"<<std::endl;
-
+		//
+	
+		
 		double wire = calcWire(Y, Z, plane, fTPC, fCryostat, *fGeometry);
 		double time = calcTime(X, plane, fTPC,fCryostat, *fDetprop);
+		vertex_wire_time_plane.push_back(TVector2(wire, time));
+		//vertex_time_plane.push_back(time);	
+	
 		std::cout<<"the time and wire on plane "<<plane<<" is ("<<time<<", "<<wire<<")"<<std::endl;
 		out_stream<<"vertex "<<vtx_index<<" plane "<<plane<<" wire time "<<wire<<" "<<time<<"\n"; 		
 		
@@ -1053,7 +1077,7 @@ if(matched_track == true && matched_showers== true){
 		//std::vector<TVector2> shower_plane = *getMinMaxShowerPlane(coneRim,plane, fTPC, fCryostat, *fGeometry, *fDetprop, shower_start_plane, min_max);
 		std::vector<TVector2> min_max;
 		std::vector<TVector2> shower_plane = getMinMaxShowerPlane(coneRim,plane, fTPC, fCryostat, *fGeometry, *fDetprop, shower_start_plane, min_max);
-		//std::vector<TVector2> shower_plane = min_max;
+	//std::vector<TVector2> shower_plane = min_max;
 //		TVector2 dist_min = shower_plane.at(1);
 //		TVector2 dist_max = shower_plane.at(0);
 
@@ -1079,6 +1103,7 @@ if(matched_track == true && matched_showers== true){
 		out_stream<<"\n";
 		
 		TVector2 shower_direction_plane = calcNormVec(shower_start_plane, shower_end_plane); 
+		shower_dir_plane.push_back(shower_direction_plane);
 		
 		//std::cout<<"the direction of the shower on this plane is "<< shower_direction_plane.X() <<" starting and ending from "<< shower_start_plane.X()<<shower_end_plane.X() <<std::endl;
 		//for each remaining sshit
@@ -1086,6 +1111,9 @@ if(matched_track == true && matched_showers== true){
 			//if the sshit falls inside the ROI
 			auto const this_sshit = std::get<1>(item);
 			double dist = distToVtx(fTimeToCMConstant, fWireToCMConstant, fRadius, time, wire, this_sshit);
+			//if (dist<100){
+			//	std::cout<<"the dist of this hit to the vtx is "<<dist<<std::endl;
+			//}
 			if (inROI(fRadius, dist) == true){
 			//	if(_ROIhitlist.size() < 3){
 			//		std::cout<<"corresponding shower dir x = "<<shower_dir.X()<<std::endl;
@@ -1106,14 +1134,31 @@ if(matched_track == true && matched_showers== true){
 //make list of sshits in ROI no track
 auto const _listnotrack = removeHitsROIList(_ROIhitlist, _trackhitlist);
 std::cout<<"the number of hits in the ROI with no track is "<<_listnotrack.size()<<std::endl;
+for (auto const& item : _listnotrack){
+	auto const this_sshit = std::get<1>(item);
+	for(int plane = 0; plane <fPlanes; ++plane){
+		auto wire =(vertex_wire_time_plane.at(plane).X());
+		auto time =(vertex_wire_time_plane.at(plane).Y());
+		auto this_shower_dir_plane = shower_dir_plane.at(plane);
+		fradial_dist_sshit_vtx_notrack = distToVtx(fTimeToCMConstant, fWireToCMConstant, fRadius, time, wire, this_sshit);
+       		fopening_angle_shower_sshit_notrack = angleFromShower(this_shower_dir_plane, this_sshit, time,wire);
+		fROITree->Fill();
+	}
+}
 
 //make list of sshits in ROI no shower
 auto const _listnoshower = removeHitsROIList(_ROIhitlist, _showerhitlist);
 std::cout<<"the number of hits in the ROI with no shower is "<<_listnoshower.size()<<std::endl;
 
 //make list of sshits in ROI no track or shower
+auto const _listnoshowernotrack = removeHitsROIList(_listnoshower, _trackhitlist);
 
 fnum_sshits_ROI = _ROIhitlist.size();
+fnum_sshits_ROI_no_shower = _listnoshower.size();
+fnum_sshits_ROI_no_track = _listnotrack.size();
+fnum_sshits_ROI_no_track_no_shower = _listnoshowernotrack.size();
+    
+
 //my_hist->Fill(fnum_sshits_ROI_no_track_no_shower);
 std::cout<<"the number of shower hits within the ROI before removing track or shower =  "<<fnum_sshits_ROI<<std::endl;
 
@@ -1304,7 +1349,7 @@ double distToVtx(double fTimeToCMConstant, double fWireToCMConstant, double radi
 	diff_w = diff_w * fWireToCMConstant;
 	
 	//calc dist from vertex
-	double dist_from_vtx = (diff_t*diff_t) + (diff_w*diff_w);
+	double dist_from_vtx = sqrt((diff_t*diff_t) + (diff_w*diff_w));
 	return dist_from_vtx;
 }//distToVtx
 
