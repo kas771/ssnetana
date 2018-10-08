@@ -72,6 +72,9 @@ TVector2 calcNormVec(TVector2 shower_start_plane,TVector2 shower_end_plane);
 double angleFromShower(TVector2 shower_direction_plane, const recob::Hit*  hit, double vertex_time, double vertex_wire);
 std::list<std::pair<const recob::Hit*, const recob::Hit* >> removeHitsROIList(std::list<std::pair<const recob::Hit*, const recob::Hit* >> _ROIlist, std::list<std::pair<const recob::Hit*, const recob::Hit* >> _showerlist);
 std::vector<std::array<double, 3>> Circle3D(const TVector3& centerPos, const TVector3& axisDir, const double& radius);
+
+std::vector<TVector2> fillROITree(std::list<std::pair<const recob::Hit*, const recob::Hit* >> _listnotrack, std::vector<TVector2>vertex_wire_time_plane, std::vector<TVector2> shower_dir_plane, int fPlanes, double fTimeToCMConstant, double fWireToCMConstant, double fRadius);
+
 std::vector<TVector2> getMinMaxShowerPlane(std::vector<std::array<double, 3>> coneRim,int plane, int fTPC, int fCryostat, geo::GeometryCore const& geo, detinfo::DetectorProperties const& detprop, TVector2 shower_start_plane, std::vector<TVector2> min_max);
 //double getRadius(double rad_in_cm);
 }
@@ -1035,6 +1038,7 @@ if(matched_track == true && matched_showers== true){
 
 	std::vector<TVector2> shower_dir_plane;
 	std::vector<TVector2> vertex_wire_time_plane;
+	std::vector<TVector2> dist_ang;
 	//std::vector<TVector2> vertex_time_plane;
 
 	//get track start and end point
@@ -1122,8 +1126,10 @@ if(matched_track == true && matched_showers== true){
                                 fradial_dist_sshit_vtx = dist;
 				fopening_angle_shower_sshit = angleFromShower(shower_direction_plane, this_sshit, time,wire);
 				//std::cout<<"the angle from the shower is "<<angle<<std::endl;
+				
+				dist_ang.push_back(TVector2(fradial_dist_sshit_vtx,fopening_angle_shower_sshit));
 						
-				fROITree->Fill();	
+				//fROITree->Fill();	
 			} //if in ROI
 		}//each sshit
 
@@ -1134,17 +1140,14 @@ if(matched_track == true && matched_showers== true){
 //make list of sshits in ROI no track
 auto const _listnotrack = removeHitsROIList(_ROIhitlist, _trackhitlist);
 std::cout<<"the number of hits in the ROI with no track is "<<_listnotrack.size()<<std::endl;
-for (auto const& item : _listnotrack){
-	auto const this_sshit = std::get<1>(item);
-	for(int plane = 0; plane <fPlanes; ++plane){
-		auto wire =(vertex_wire_time_plane.at(plane).X());
-		auto time =(vertex_wire_time_plane.at(plane).Y());
-		auto this_shower_dir_plane = shower_dir_plane.at(plane);
-		fradial_dist_sshit_vtx_notrack = distToVtx(fTimeToCMConstant, fWireToCMConstant, fRadius, time, wire, this_sshit);
-       		fopening_angle_shower_sshit_notrack = angleFromShower(this_shower_dir_plane, this_sshit, time,wire);
-		fROITree->Fill();
-	}
+auto dist_ang_notrack =  fillROITree( _listnotrack, vertex_wire_time_plane, shower_dir_plane, fPlanes, fTimeToCMConstant,  fWireToCMConstant, fRadius);
+for(auto const& item : dist_ang){
+	fradial_dist_sshit_vtx_notrack = item.X();
+	fopening_angle_shower_sshit_notrack = item.Y();
+	//std::cout<< fradial_dist_sshit_vtx_notrack<<", "<<fopening_angle_shower_sshit_notrack<<std::endl;
+	//fROITree->Fill();
 }
+
 
 //make list of sshits in ROI no shower
 auto const _listnoshower = removeHitsROIList(_ROIhitlist, _showerhitlist);
@@ -1157,7 +1160,20 @@ fnum_sshits_ROI = _ROIhitlist.size();
 fnum_sshits_ROI_no_shower = _listnoshower.size();
 fnum_sshits_ROI_no_track = _listnotrack.size();
 fnum_sshits_ROI_no_track_no_shower = _listnoshowernotrack.size();
-    
+
+for(size_t n = 0; n != _ROIhitlist.size(); ++n){
+	fradial_dist_sshit_vtx = dist_ang.at(n).X();
+    	fopening_angle_shower_sshit = dist_ang.at(n).Y(); 
+    //	fradial_dist_sshit_vtx_noshower; 
+    //	fopening_angle_shower_sshit_noshower; 
+	if(n<unsigned(fnum_sshits_ROI_no_track)){    
+		fradial_dist_sshit_vtx_notrack = dist_ang_notrack.at(n).X(); 
+     		fopening_angle_shower_sshit_notrack = dist_ang_notrack.at(n).Y(); 
+	}    
+//	fradial_dist_sshit_vtx_noshowernotrack; 
+    //	fopening_angle_shower_sshit_noshowernotrack;	
+	fROITree->Fill();
+}    
 
 //my_hist->Fill(fnum_sshits_ROI_no_track_no_shower);
 std::cout<<"the number of shower hits within the ROI before removing track or shower =  "<<fnum_sshits_ROI<<std::endl;
@@ -1495,6 +1511,23 @@ std::vector<std::array<double, 3>> Circle3D(const TVector3& centerPos, const TVe
      rimPts[nRimPts] = rimPts[0];
      return rimPts;
 }
+
+std::vector<TVector2> fillROITree(std::list<std::pair<const recob::Hit*, const recob::Hit* >> _listnotrack, std::vector<TVector2>vertex_wire_time_plane, std::vector<TVector2> shower_dir_plane, int fPlanes, double fTimeToCMConstant, double fWireToCMConstant, double fRadius){
+	std::vector<TVector2> dist_ang;
+	for (auto const& item : _listnotrack){
+		auto const this_sshit = std::get<1>(item);
+		for(int plane = 0; plane <fPlanes; ++plane){
+			auto wire =(vertex_wire_time_plane.at(plane).X());
+			auto time =(vertex_wire_time_plane.at(plane).Y());
+			auto this_shower_dir_plane = shower_dir_plane.at(plane);
+			double fradial_dist_sshit_vtx_notrack = distToVtx(fTimeToCMConstant, fWireToCMConstant, fRadius, time, wire, this_sshit);
+       			double fopening_angle_shower_sshit_notrack = angleFromShower(this_shower_dir_plane, this_sshit, time,wire);
+			dist_ang.push_back(TVector2(fradial_dist_sshit_vtx_notrack,  fopening_angle_shower_sshit_notrack));
+			//(&fROITree)->Fill();
+		}//for each plane
+	}//for each hit
+	return dist_ang;
+}//fill ROI Tree
 
 //gets the two other vertices of a shower for a given plane by computing a circle in 3D
 //and then projecting each point to a given plane
