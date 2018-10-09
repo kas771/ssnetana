@@ -1147,7 +1147,7 @@ if(matched_track == true && matched_showers== true){
 //make list of sshits in ROI no track
 //auto const _listnotrack = removeHitsROIList(_ROIhitlist, _trackhitlist);
 auto const _listindnotrack = getIndHitsROIList(_ROIhitlist, _trackhitlist);
-std::cout<<"the number of hits in the ROI with no track is "<<_listindnotrack.size()<<std::endl;
+std::cout<<"the number of track hits in the ROI is "<<_listindnotrack.size()<<std::endl;
 //auto dist_ang_notrack =  fillROITree( _listnotrack, vertex_wire_time_plane, shower_dir_plane, fPlanes, fTimeToCMConstant,  fWireToCMConstant, fRadius);
 //for(auto const& item : dist_ang_notrack){
 //	fradial_dist_sshit_vtx_notrack = item.X();
@@ -1156,11 +1156,12 @@ std::cout<<"the number of hits in the ROI with no track is "<<_listindnotrack.si
 	//fROITree->Fill();
 //}
 
-/*
+
 //make list of sshits in ROI no shower
-auto const _listnoshower = removeHitsROIList(_ROIhitlist, _showerhitlist);
-std::cout<<"the number of hits in the ROI with no shower is "<<_listnoshower.size()<<std::endl;
-auto dist_ang_noshower =  fillROITree( _listnoshower, vertex_wire_time_plane, shower_dir_plane, fPlanes, fTimeToCMConstant,  fWireToCMConstant, fRadius);
+//auto const _listnoshower = removeHitsROIList(_ROIhitlist, _showerhitlist);
+auto const _listnoshower = getIndHitsROIList(_ROIhitlist, _showerhitlist);
+std::cout<<"the number of shower hits in the ROI is "<<_listnoshower.size()<<std::endl;
+//auto dist_ang_noshower =  fillROITree( _listnoshower, vertex_wire_time_plane, shower_dir_plane, fPlanes, fTimeToCMConstant,  fWireToCMConstant, fRadius);
 //for (auto const& item : dist_ang_noshower){
 //	if (item.X()>60){
 //		std::cout<<"ERROR before filling tree, ssnet hit in ROI minus shower outside radius, distance = "<<item.X()<<std::endl;
@@ -1168,21 +1169,33 @@ auto dist_ang_noshower =  fillROITree( _listnoshower, vertex_wire_time_plane, sh
 //}
 	
 //make list of sshits in ROI no track or shower
-auto const _listnoshowernotrack = removeHitsROIList(_listnoshower, _trackhitlist);
+//auto const _listnoshowernotrack = getIndHitsROIList(_listnoshower, _trackhitlist);
+std::vector<int> _listnoshowernotrack;
+for (auto const& item : _listindnotrack){
+	_listnoshowernotrack.push_back(item);
+}
+for (auto const& item : _listnoshower){
+        _listnoshowernotrack.push_back(item);
+}
+std::cout<<"the number of shower and track hits in the ROI is "<<_listnoshowernotrack.size()<<std::endl;
 //auto dist_ang_noshower =  fillROITree( _listnoshower, vertex_wire_time_plane, shower_dir_plane, fPlanes, fTimeToCMConstant,  fWireToCMConstant, fRadius);
-auto dist_ang_noshowernotrack =  fillROITree( _listnoshowernotrack, vertex_wire_time_plane, shower_dir_plane, fPlanes, fTimeToCMConstant,  fWireToCMConstant, fRadius);
-*/
+//auto dist_ang_noshowernotrack =  fillROITree( _listnoshowernotrack, vertex_wire_time_plane, shower_dir_plane, fPlanes, fTimeToCMConstant,  fWireToCMConstant, fRadius);
+
 	
 fnum_sshits_ROI = _ROIhitlist.size();
-//fnum_sshits_ROI_no_shower = _listnoshower.size();
+fnum_sshits_ROI_no_shower = _listnoshower.size();
 fnum_sshits_ROI_no_track = _listindnotrack.size();
-//fnum_sshits_ROI_no_track_no_shower = _listnoshowernotrack.size();
+fnum_sshits_ROI_no_track_no_shower = _listnoshowernotrack.size();
 
 //std::cout<<"num hits in ROI, -shower, -track, -shower and track"<<fnum_sshits_ROI<<", "<<fnum_sshits_ROI_no_shower<<", "<<fnum_sshits_ROI_no_track<<", "<<fnum_sshits_ROI_no_track_no_shower<<std::endl;
 
 for(size_t n = 0; n != _ROIhitlist.size(); ++n){
 	fradial_dist_sshit_vtx = dist_ang.at(n).X();
     	fopening_angle_shower_sshit = dist_ang.at(n).Y(); 
+	if(contains(n, _listnoshower)==true){
+	 	fradial_dist_sshit_vtx_noshower = dist_ang.at(n).X();
+                fopening_angle_shower_sshit_noshower = dist_ang.at(n).Y();
+	}
  //   	if( n<unsigned(fnum_sshits_ROI_no_shower)){
 //		fradial_dist_sshit_vtx_noshower = dist_ang_noshower.at(n).X(); 
 //    		fopening_angle_shower_sshit_noshower = dist_ang_noshower.at(n).Y(); 
@@ -1190,12 +1203,19 @@ for(size_t n = 0; n != _ROIhitlist.size(); ++n){
 		//	std::cout<<"ERROR: when filling tree ssnet hit in ROI minus shower outside radius, distance = "<<fradial_dist_sshit_vtx_noshower<<std::endl;
 		//}
 //	}
-	if(contains(n, _listindnotrack)==false){    
+	if(contains(n, _listindnotrack)==true){    
 		//fradial_dist_sshit_vtx_notrack = dist_ang_notrack.at(n).X(); 
      		//fopening_angle_shower_sshit_notrack = dist_ang_notrack.at(n).Y(); 
 	        fradial_dist_sshit_vtx_notrack = dist_ang.at(n).X(); 
      		fopening_angle_shower_sshit_notrack = dist_ang.at(n).Y(); 
 	} 
+	
+	if(contains(n, _listnoshowernotrack)==true){
+                fradial_dist_sshit_vtx_noshowernotrack = dist_ang.at(n).X();
+                fopening_angle_shower_sshit_noshowernotrack = dist_ang.at(n).Y();
+        }
+
+
 //	if(n<unsigned(fnum_sshits_ROI_no_track_no_shower)){   
 //		fradial_dist_sshit_vtx_noshowernotrack = dist_ang_noshowernotrack.at(n).X(); 
 //    		fopening_angle_shower_sshit_noshowernotrack =  dist_ang_noshowernotrack.at(n).Y();	
@@ -1535,19 +1555,22 @@ std::vector<int> getIndHitsROIList(std::list<std::pair<const recob::Hit*, const 
 	//for each hit in the ROI
 	for(auto const& item : _ROIlist){
 		auto const this_hit = (std::get<0>(item));
-	
+		bool match = false;	
 		//for each hit in the shower/track
 		for(auto const& this_item : _showerlist){
 			 auto const stored_hit = (std::get<0>(this_item));
                          //if the shower/track hit matches a hit in the ROI
 			 if(matches(this_hit, stored_hit)== true){
 				num_hits_obj_in_ROI++;
-			}else{//store the index of the ROI hits that don't match with the track/shower
-				indices.push_back(this_ind);
-	
+				match = true;
+			//}else{//store the index of the ROI hits that don't match with the track/shower
 			}
 		}
-	this_ind++;
+		//if there is no match for this hit in the shower/track, save the index
+		if (match==false){
+			indices.push_back(this_ind);
+		}
+		this_ind++;
 	}
 	std::cout<<"the number of hits from the track/shower object in the ROI is "<<num_hits_obj_in_ROI<<std::endl;
 	return indices;
@@ -1610,7 +1633,7 @@ bool contains(int n, std::vector<int> _listnotrack){
 	for(auto const& item : _listnotrack){
 		if(item == n){
 			contains = true;
-			break;
+			//break;
 		}
 	}	
 	return contains;
