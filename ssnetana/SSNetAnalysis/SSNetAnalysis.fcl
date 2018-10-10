@@ -80,9 +80,11 @@ physics:
       ShowerLabel:      "pandoraNu"
       Planes: 3
       Radius: 60.0
-      WireToCMConstant:        0.3
+     # WireToCMConstant:        0.3
+      WireToCMConstant:		0.1857
       TimeToCMConstant:        0.0557	
       InputVertexFile: "/uboone/app/users/markrl/single_photon_fresh_13April/working_dir/hellstroms_hive/deltaRad/build/src_new/bnbcosmics_vertex_file"
+      #InputVertexFile: "/uboone/app/users/markrl/single_photon_fresh_13April/working_dir/hellstroms_hive/deltaRad/build/src_new/ncdeltaradcosmics_vertex_file"
 	 }
   }
 #}

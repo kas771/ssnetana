@@ -1170,13 +1170,38 @@ std::cout<<"the number of shower hits in the ROI is "<<_listnoshower.size()<<std
 	
 //make list of sshits in ROI no track or shower
 //auto const _listnoshowernotrack = getIndHitsROIList(_listnoshower, _trackhitlist);
-//std::vector<int> _listnoshowernotrack;
+std::vector<int> _listnoshowernotrack;
+//add all hits in ROI minus the track
 //for (auto const& item : _listindnotrack){
 //	_listnoshowernotrack.push_back(item);
 //}
-//for (auto const& item : _listnoshower){
-//        _listnoshowernotrack.push_back(item);
+
+//for each hit in the ROI minus the shower
+//int ind = 0;
+std::vector<int> indices_to_remove;
+for (auto const& item : _listnoshower){
+	bool contains = false;
+	//for each hit in the ROI minus the track
+	for (auto const& item2 : _listindnotrack){
+		//if both the no shower and no track lists contains the same hit
+		if (item == item2){
+        		contains = true;
+        		//remove the hit
+			//_listnoshowernotrack.remove(item);
+		}
+	}
+	//if the no track list doesn't contain the hit from the no shower list, remove it from the no shower no track list
+	if(contains == true){ 
+		_listnoshowernotrack.push_back(item);
+       		//_listnoshowernotrack.erase(ind);
+	}
+	//ind++;
+}
+//std::cout<<"the number of shower hits to remove from the no track list is "<<indices_to_remove.size()<<std::endl;
+//for (int ind : _listnoshower) {
+//	_listnoshowernotrack.erase( _listnoshowernotrack.begin() + ind);
 //}
+
 //std::cout<<"the number of shower and track hits in the ROI is "<<_listnoshowernotrack.size()<<std::endl;
 //auto dist_ang_noshower =  fillROITree( _listnoshower, vertex_wire_time_plane, shower_dir_plane, fPlanes, fTimeToCMConstant,  fWireToCMConstant, fRadius);
 //auto dist_ang_noshowernotrack =  fillROITree( _listnoshowernotrack, vertex_wire_time_plane, shower_dir_plane, fPlanes, fTimeToCMConstant,  fWireToCMConstant, fRadius);
@@ -1185,8 +1210,8 @@ std::cout<<"the number of shower hits in the ROI is "<<_listnoshower.size()<<std
 fnum_sshits_ROI = _ROIhitlist.size();
 fnum_sshits_ROI_no_shower = _listnoshower.size();
 fnum_sshits_ROI_no_track = _listindnotrack.size();
-//fnum_sshits_ROI_no_track_no_shower = _listnoshowernotrack.size();
-fnum_sshits_ROI_no_track_no_shower = (-1*fnum_sshits_ROI ) + (fnum_sshits_ROI_no_track + fnum_sshits_ROI_no_shower);
+fnum_sshits_ROI_no_track_no_shower = _listnoshowernotrack.size();
+//fnum_sshits_ROI_no_track_no_shower = (-1*fnum_sshits_ROI ) + (fnum_sshits_ROI_no_track + fnum_sshits_ROI_no_shower);
 
 std::cout<<"num hits in ROI, -shower, -track, -shower and track"<<fnum_sshits_ROI<<", "<<fnum_sshits_ROI_no_shower<<", "<<fnum_sshits_ROI_no_track<<", "<<fnum_sshits_ROI_no_track_no_shower<<std::endl;
 
@@ -1211,16 +1236,16 @@ for(size_t n = 0; n != _ROIhitlist.size(); ++n){
      		fopening_angle_shower_sshit_notrack = dist_ang.at(n).Y(); 
 	} 
 	
-	if(contains(n, _listnoshower)==true && contains(n, _listindnotrack)==true){
-                fradial_dist_sshit_vtx_noshowernotrack = dist_ang.at(n).X();
-                fopening_angle_shower_sshit_noshowernotrack = dist_ang.at(n).Y();
-        }
+//	if(contains(n, _listnoshower)==true || contains(n, _listindnotrack)==true){
+ //               fradial_dist_sshit_vtx_noshowernotrack = dist_ang.at(n).X();
+  //              fopening_angle_shower_sshit_noshowernotrack = dist_ang.at(n).Y();
+   //     }
 
 
-//	if(n<unsigned(fnum_sshits_ROI_no_track_no_shower)){   
-//		fradial_dist_sshit_vtx_noshowernotrack = dist_ang_noshowernotrack.at(n).X(); 
-//    		fopening_angle_shower_sshit_noshowernotrack =  dist_ang_noshowernotrack.at(n).Y();	
-//	}
+	if(contains(n, _listnoshowernotrack)==true){   
+		fradial_dist_sshit_vtx_noshowernotrack = dist_ang.at(n).X(); 
+    		fopening_angle_shower_sshit_noshowernotrack =  dist_ang.at(n).Y();	
+	}
 	fROITree->Fill();
 }    
 
