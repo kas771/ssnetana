@@ -1050,6 +1050,9 @@ if(matched_track == true && matched_showers== true){
 	TVector3 track_start = TrackStart.at(vtx_index);
 	TVector3 track_end = TrackEnd.at(vtx_index);
 	
+	int n_theta_small_pos = 0;
+ 	int n_theta_small_neg = 0;
+
 	//for each plane
 	for (int plane = 0; plane <fPlanes; ++plane){	
 		//std::cout<<"starting plane "<<plane<<std::endl;
@@ -1134,6 +1137,14 @@ if(matched_track == true && matched_showers== true){
 				if (fradial_dist_sshit_vtx>60){
 					std::cout<<"ERROR: hit in ROIHitList outside of ROI, radial dist = "<< fradial_dist_sshit_vtx<<std::endl;
 				}
+				if ( fopening_angle_shower_sshit < 0.2){
+					n_theta_small_pos++;
+				}
+				if ( fopening_angle_shower_sshit > 2.95){
+					n_theta_small_neg++;
+					//std::cout<<"the angle between the hit and the shower is "<<opening_angle<<std::endl;
+				}
+	
 				dist_ang.push_back(TVector2(fradial_dist_sshit_vtx,fopening_angle_shower_sshit));
 						
 				//fROITree->Fill();	
@@ -1143,6 +1154,8 @@ if(matched_track == true && matched_showers== true){
 		//std::cout<<"ending plane "<<plane<<std::endl;
 
 	}//for each plane
+
+std::cout<<"the number of hits at small positive angles = "<<n_theta_small_pos<<" and the number for small negative = "<<n_theta_small_neg<<std::endl;
 
 //make list of sshits in ROI no track
 //auto const _listnotrack = removeHitsROIList(_ROIhitlist, _trackhitlist);
@@ -1534,8 +1547,17 @@ double angleFromShower(TVector2 shower_direction_plane, const recob::Hit*  hit, 
 	TVector2 this_vertex = TVector2(vertex_time, vertex_wire);
 
 	TVector2 hit_vtx_direction_plane = calcNormVec(this_vertex, this_hit);
+	TVector2 norm_hit_vtx_direction_plane  = hit_vtx_direction_plane.Unit();
+	TVector2 norm_shower_direction_plane = shower_direction_plane.Unit();
+	double dot =  (norm_hit_vtx_direction_plane.X()*norm_shower_direction_plane.X()) + (norm_hit_vtx_direction_plane.Y()*norm_shower_direction_plane.Y());
+	//std::cout<<"the dot product between the hit vector and the shower vector is "<< dot<<std::endl;
+	
 
-	double opening_angle = hit_vtx_direction_plane.Phi() - shower_direction_plane.Phi();
+	//double opening_angle = hit_vtx_direction_plane.Phi() - shower_direction_plane.Phi();
+	double opening_angle = acos(dot);
+	if (norm_hit_vtx_direction_plane.X() < norm_shower_direction_plane.X()){
+		opening_angle = -opening_angle;
+	}
 	return opening_angle;
 	
 }
