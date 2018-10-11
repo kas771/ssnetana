@@ -161,7 +161,23 @@ namespace example {
    fhicl::Atom<std::string> InputVertexFile {
         Name("InputVertexFile"),
         Comment(".txt file containing information about the single photon vertices")
-	};  
+	};
+   
+    fhicl::Atom<int> Run {
+        Name("Run"),
+        Comment("The run for the event to for the output histograms")
+	};
+
+    fhicl::Atom<int> Subrun {
+        Name("Subrun"),
+        Comment("The subrun for the event to for the output histograms")
+	};
+
+    fhicl::Atom<int> Event {
+        Name("Event"),
+        Comment("The event number for the event to for the output histograms")
+	};
+
 };//struct
     
      using Parameters = art::EDAnalyzer::Table<Config>;
@@ -198,6 +214,9 @@ namespace example {
     double fWireToCMConstant; //converstion factor wire to cm
     double fTimeToCMConstant; //converstion factor time to cm
     std::string fInputVertexFile;//contains list of vertex for events
+    int fRun_hist; //the run number to make histograms for
+    int fSubrun_hist; //the subrun number to make histograms for
+    int fEvent_hist; //the event number to make histograms for
 
 // vector of shower-like hit indices
 //   std::vector<size_t> _shrhits;
@@ -207,6 +226,13 @@ namespace example {
     TH1D* fMomentumHist;    ///< momentum [GeV] of all selected particles
     TH1D* fTrackLengthHist; ///< true length [cm] of all selected particlesi
     TH1D* my_hist; ///sshits in ROI
+
+    //Histograms for the event indicated in the fcl
+    TH1D* fAngle_sshits; //the angular dist for all sshits in the ROI
+    TH1D* fDist_sshits; //the radial dist for all sshits in the ROI
+    TH1D* fAngle_sshits_noshower; //the angular dist for all sshits in the ROI minus the shower
+    TH1D* fDist_sshits_noshower; //the radial dist for all sshits in the ROI minus the shower
+
 
     // The n-tuples we'll create.
     TTree* fmytree;     ///< tuple with information about all events
@@ -291,6 +317,10 @@ SSNetTest::SSNetTest(Parameters const& config) // Initialize member data here.
 	, fWireToCMConstant		  (config().WireToCMConstant())
 	, fTimeToCMConstant		  (config().TimeToCMConstant())
 	, fInputVertexFile	       	  (config().InputVertexFile())
+	, fRun_hist		       	  (config().Run())
+	, fSubrun_hist		       	  (config().Subrun())
+	, fEvent_hist		       	  (config().Event())
+	
 	// fInHitProducer   = p.get<std::string>("InHitProducer","gaushit");
         //fPxThresholdHigh = p.get<double>     ("PxThresholdHigh"        );
         //fPxThresholdLow  = p.get<double>     ("PxThresholdLow"         );
@@ -376,10 +406,16 @@ SSNetTest::SSNetTest(Parameters const& config) // Initialize member data here.
     // histograms and n-tuples for us. 
     art::ServiceHandle<art::TFileService> tfs;
   
-    fPDGCodeHist     = tfs->make<TH1D>("pdgcodes",";PDG Code;",                  5000, -2500, 2500);
-    fMomentumHist    = tfs->make<TH1D>("mom",     ";particle Momentum (GeV);",    100, 0.,    10.);
-    fTrackLengthHist = tfs->make<TH1D>("length",  ";particle track length (cm);", 200, 0, detectorLength);
-    my_hist = tfs->make<TH1D>("num sshits in roi",  ";;", 200, 0, 1000 );
+    fPDGCodeHist     = 		tfs->make<TH1D>("pdgcodes",";PDG Code;",                  5000, -2500, 2500);
+    fMomentumHist    = 		tfs->make<TH1D>("mom",     ";particle Momentum (GeV);",    100, 0.,    10.);
+    fTrackLengthHist = 		tfs->make<TH1D>("length",  ";particle track length (cm);", 200, 0, detectorLength);
+    my_hist = 			tfs->make<TH1D>("num sshits in roi",  ";;", 200, 0, 1000 );
+    fAngle_sshits =  		tfs->make<TH1D>("angle_all",";Opening Angle all SSNet Hits Roi;",20, -3.3, 3.3);
+    fDist_sshits =		tfs->make<TH1D>("dist_all",";Distance from Vertex all SSNet Hits Roi;",20, 0, fRadius);
+    fAngle_sshits_noshower = 	tfs->make<TH1D>("angle_noshower",";Opening Angle SSNet Hits Roi minus Shower;",20, -3.3, 3.3);
+    fDist_sshits_noshower = 	tfs->make<TH1D>("dist_noshower", ";Opening Angle all SSNet Hits Roi;",20, 0, fRadius);
+
+
     // Define our n-tuples, which are limited forms of ROOT
     // TTrees. Start with the TTree itself.
     fmytree     = tfs->make<TTree>("SSNetTestSimulation",    "SSNetTestSimulation");
@@ -1134,7 +1170,7 @@ if(matched_track == true && matched_showers== true){
                                 fradial_dist_sshit_vtx = dist;
 				fopening_angle_shower_sshit = angleFromShower(shower_direction_plane, this_sshit, time,wire);
 				//std::cout<<"the angle from the shower is "<<angle<<std::endl;
-				if (fradial_dist_sshit_vtx>60){
+				if (fradial_dist_sshit_vtx>fRadius){
 					std::cout<<"ERROR: hit in ROIHitList outside of ROI, radial dist = "<< fradial_dist_sshit_vtx<<std::endl;
 				}
 				if ( fopening_angle_shower_sshit < 0.2){
@@ -1176,7 +1212,7 @@ auto const _listnoshower = getIndHitsROIList(_ROIhitlist, _showerhitlist);
 std::cout<<"the number of shower hits in the ROI is "<<_listnoshower.size()<<std::endl;
 //auto dist_ang_noshower =  fillROITree( _listnoshower, vertex_wire_time_plane, shower_dir_plane, fPlanes, fTimeToCMConstant,  fWireToCMConstant, fRadius);
 //for (auto const& item : dist_ang_noshower){
-//	if (item.X()>60){
+//	if (item.X()>fRadius){
 //		std::cout<<"ERROR before filling tree, ssnet hit in ROI minus shower outside radius, distance = "<<item.X()<<std::endl;
 //	}
 //}
@@ -1228,17 +1264,33 @@ fnum_sshits_ROI_no_track_no_shower = _listnoshowernotrack.size();
 
 std::cout<<"num hits in ROI, -shower, -track, -shower and track"<<fnum_sshits_ROI<<", "<<fnum_sshits_ROI_no_shower<<", "<<fnum_sshits_ROI_no_track<<", "<<fnum_sshits_ROI_no_track_no_shower<<std::endl;
 
+bool make_hists_this_event= false;
+if (fRun == fRun_hist && fSubRun == fSubrun_hist && fEvent == fEvent_hist){
+	std::cout<<"Making individual histograms for this event"<<std::endl;
+	make_hists_this_event =true;	
+}
+std::cout<<make_hists_this_event<<std::endl;
+ 
 for(size_t n = 0; n != _ROIhitlist.size(); ++n){
 	fradial_dist_sshit_vtx = dist_ang.at(n).X();
     	fopening_angle_shower_sshit = dist_ang.at(n).Y(); 
+	if(make_hists_this_event ==true){
+		fDist_sshits->Fill(fradial_dist_sshit_vtx);	
+		fAngle_sshits->Fill(fopening_angle_shower_sshit);
+		//std::cout<<"filling the histograms"<<std::endl;	
+	}
 	if(contains(n, _listnoshower)==true){
 	 	fradial_dist_sshit_vtx_noshower = dist_ang.at(n).X();
                 fopening_angle_shower_sshit_noshower = dist_ang.at(n).Y();
+		if(make_hists_this_event ==true){
+                	fDist_sshits_noshower->Fill(fradial_dist_sshit_vtx_noshower);
+                	fAngle_sshits_noshower->Fill(fopening_angle_shower_sshit_notrack);
+        	}
 	}
  //   	if( n<unsigned(fnum_sshits_ROI_no_shower)){
 //		fradial_dist_sshit_vtx_noshower = dist_ang_noshower.at(n).X(); 
 //    		fopening_angle_shower_sshit_noshower = dist_ang_noshower.at(n).Y(); 
-		//if (fradial_dist_sshit_vtx_noshower>60){
+		//if (fradial_dist_sshit_vtx_noshower>fRadius){
 		//	std::cout<<"ERROR: when filling tree ssnet hit in ROI minus shower outside radius, distance = "<<fradial_dist_sshit_vtx_noshower<<std::endl;
 		//}
 //	}
@@ -1261,6 +1313,12 @@ for(size_t n = 0; n != _ROIhitlist.size(); ++n){
 	}
 	fROITree->Fill();
 }    
+
+//if(make_hists_this_event ==true){
+  // fDist_sshits_noshower->Draw();
+  // fAngle_sshits_noshower->Draw();
+// }
+
 
 //my_hist->Fill(fnum_sshits_ROI_no_track_no_shower);
 std::cout<<"the number of shower hits within the ROI before removing track or shower =  "<<fnum_sshits_ROI<<std::endl;
@@ -1665,7 +1723,7 @@ std::vector<TVector2> fillROITree(std::list<std::pair<const recob::Hit*, const r
 	
 			auto this_shower_dir_plane = shower_dir_plane.at(plane);
 			double fradial_dist_sshit_vtx_notrack = distToVtx(fTimeToCMConstant, fWireToCMConstant, fRadius, time, wire, this_sshit);
-			if (fradial_dist_sshit_vtx_notrack> 60){
+			if (fradial_dist_sshit_vtx_notrack> fRadius){
 				std::cout<<"ERROR: in fillROITree ssnet hit in ROI minus shower outside radius, distance = "<<fradial_dist_sshit_vtx_notrack<<std::endl;	
 			}
        			double fopening_angle_shower_sshit_notrack = angleFromShower(this_shower_dir_plane, this_sshit, time,wire);
