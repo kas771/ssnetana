@@ -1427,7 +1427,10 @@ for(auto const& item : _ROIhitlist){
 		//std::cout<<"the dist and ang for this index is "<<fradial_dist_sshit_vtx<<", "<<fopening_angle_shower_sshit<<std::endl;
 		if(plane == 0){
 			fDist_sshits_plane0->Fill(fradial_dist_sshit_vtx);
-                	fAngle_sshits_plane0->Fill(fopening_angle_shower_sshit);
+                	//fAngle_sshits_plane0->Fill(fopening_angle_shower_sshit);
+			for(auto n_hits: hits_all_angles_plane0){
+				fAngle_sshits_plane0->Fill(n_hits); 
+			}
 		}
 
 		if(plane == 1){
