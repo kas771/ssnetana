@@ -72,7 +72,7 @@ TVector2 calcNormVec(TVector2 shower_start_plane,TVector2 shower_end_plane);
 double angleFromShower(TVector2 shower_direction_plane, const recob::Hit*  hit, double vertex_time, double vertex_wire);
 //std::list<std::pair<const recob::Hit*, const recob::Hit* >> removeHitsROIList(std::list<std::pair<const recob::Hit*, const recob::Hit* >> _ROIlist, std::list<std::pair<const recob::Hit*, const recob::Hit* >> _showerlist);
 
-std::vector<int> getNumHitsSectors(int n_inc, double radius, double vertex_time, double vertex_wire, std::list<std::pair<const recob::Hit*, const recob::Hit* >> _ROIlist, double fTimetoCMConstant, double fWiretoCMConstant);
+std::vector<TVector2> getNumHitsSectors(int n_inc, double radius, double vertex_time, double vertex_wire, std::list<std::pair<const recob::Hit*, const recob::Hit* >> _ROIlist, double fTimetoCMConstant, double fWiretoCMConstant);
 
 bool inSector(TVector2 sector_start_cm, TVector2 sector_end_cm,  const recob::Hit*  hit, double vertex_time, double vertex_wire, double fTimetoCMConstant, double fWiretoCMConstant);
 
@@ -312,7 +312,7 @@ namespace example {
     double fopening_angle_shower_sshit_noshowernotrack; //the angle on each plane between the shower direction and the vtx-sshit
 	 
     //int fnum_sshits_ROI_with_shower; 
- 
+    int n_inc;
     geo::GeometryCore const* fGeometry;
       //stuff to do the vertex to plane mapping
    // art::ServiceHandle<geo::Geometry>  geo;
@@ -429,7 +429,8 @@ SSNetTest::SSNetTest(Parameters const& config) // Initialize member data here.
          } // while
 */
 
-    
+    n_inc = 100;
+
     // Access ART's TFileService, which will handle creating and writing
     // histograms and n-tuples for us. 
     art::ServiceHandle<art::TFileService> tfs;
@@ -442,7 +443,7 @@ SSNetTest::SSNetTest(Parameters const& config) // Initialize member data here.
     fDist_sshits =		tfs->make<TH1D>("dist_all",";Distance from Vertex all SSNet Hits Roi;", 100, 0, fRadius);
     fAngle_sshits_noshower = 	tfs->make<TH1D>("angle_noshower",";Opening Angle SSNet Hits Roi minus Shower;",100, -3.3, 3.3);
     fDist_sshits_noshower = 	tfs->make<TH1D>("dist_noshower", ";Opening Angle all SSNet Hits Roi;",100, 0, fRadius);
-    fAngle_sshits_plane0 =  		tfs->make<TH1D>("angle_all_plane0",";Opening Angle all SSNet Hits Roi for Plane0;",100, -3.3, 3.3);
+    fAngle_sshits_plane0 =  		tfs->make<TH1D>("angle_all_plane0",";Opening Angle all SSNet Hits Roi for Plane0;",n_inc, 0, 2*M_PI);
     fDist_sshits_plane0 =		tfs->make<TH1D>("dist_all_plane0",";Distance from Vertex all SSNet Hits Roi for Plane0;",100, 0, fRadius);
     fAngle_sshits_noshower_plane0 = 	tfs->make<TH1D>("angle_noshower_plane0",";Opening Angle SSNet Hits Roi minus Shower for Plane0;",100, -3.3, 3.3);
     fDist_sshits_noshower_plane0  = 	tfs->make<TH1D>("dist_noshower_plane0", ";Opening Angle all SSNet Hits Roi for Plane0;",100, 0, fRadius);
@@ -1137,7 +1138,7 @@ if(matched_track == true && matched_showers== true){
 	int n_theta_small_pos = 0;
  	int n_theta_small_neg = 0;
 	
-	std::vector<int> hits_all_angles_plane0;
+	std::vector<TVector2> hits_all_angles_plane0;
 
 	//for each plane
 	for (int plane = 0; plane <fPlanes; ++plane){	
@@ -1259,7 +1260,7 @@ if(matched_track == true && matched_showers== true){
 
 		//std::cout<<"ending plane "<<plane<<std::endl;
 		if(plane==0){
-			int n_inc = 100;
+		//	int n_inc = 100;
 			hits_all_angles_plane0 =  getNumHitsSectors(n_inc, fRadius, time, wire, _ROIhitlist, fTimeToCMConstant,fWireToCMConstant);
 		}
 
@@ -1427,9 +1428,9 @@ for(auto const& item : _ROIhitlist){
 		//std::cout<<"the dist and ang for this index is "<<fradial_dist_sshit_vtx<<", "<<fopening_angle_shower_sshit<<std::endl;
 		if(plane == 0){
 			fDist_sshits_plane0->Fill(fradial_dist_sshit_vtx);
-                	//fAngle_sshits_plane0->Fill(fopening_angle_shower_sshit);
-			for(auto n_hits: hits_all_angles_plane0){
-				fAngle_sshits_plane0->Fill(n_hits); 
+                	fAngle_sshits_plane0->Fill(fopening_angle_shower_sshit);
+			for(unsigned int i= 0; i < hits_all_angles_plane0.size(); i++){
+				fAngle_sshits_plane0->SetBinContent(i, hits_all_angles_plane0.at(i).Y()); 
 			}
 		}
 
@@ -1857,9 +1858,9 @@ bool inSector(TVector2 sector_start_cm, TVector2 sector_end_cm,  const recob::Hi
 //given a start vector direction (given the shower direction), a vertex position 
 //iterates 360 over a circle for a given number of increments
 //fills a vector with the number of hits in each sector
-std::vector<int> getNumHitsSectors(int n_inc, double radius, double vertex_time, double vertex_wire, std::list<std::pair<const recob::Hit*, const recob::Hit* >> _ROIlist, double fTimetoCMConstant, double fWiretoCMConstant){
+std::vector<TVector2> getNumHitsSectors(int n_inc, double radius, double vertex_time, double vertex_wire, std::list<std::pair<const recob::Hit*, const recob::Hit* >> _ROIlist, double fTimetoCMConstant, double fWiretoCMConstant){
 
-	std::vector<int> hits_per_bin;
+	std::vector<TVector2> hits_per_bin;
 	double theta_seg = 2*M_PI/n_inc;
 	
 	TVector2 vertex = calcCM(TVector2(vertex_time, vertex_wire), fTimetoCMConstant, fWiretoCMConstant);	
@@ -1869,11 +1870,13 @@ std::vector<int> getNumHitsSectors(int n_inc, double radius, double vertex_time,
 	//Tvector2 sec_end = getSectorEnd(sec_start, theta_seg);
 	//calc number in the first sector
 
+	double this_theta = 0;
+
 	//push back number
 	//hits_per_bin[0] = n_sec;
-
+	int n_hits_ROI_plane = 0;
 	//for each sector
-	for(int i = 0; i<theta_seg; i++){
+	for(int i = 0; i<n_inc; i++){
 		int n_sec = 0; //the number of hits in currect sector
 		//set the start vector(using previous if n!= 0)
 		if (i > 0){
@@ -1893,8 +1896,13 @@ std::vector<int> getNumHitsSectors(int n_inc, double radius, double vertex_time,
 			}
 		}//for each hit
 		//push back the number of hits? add to a tree? some form of storage
-		hits_per_bin.push_back(n_sec);
+		hits_per_bin.push_back(TVector2(this_theta, n_sec));
+		n_hits_ROI_plane += n_sec;
+		this_theta += theta_seg;
+		std::cout<<"The angle for this sector is "<<this_theta<<std::endl;
+		std::cout<<"The number of hits in sector "<<i<<" is "<<n_sec<<std::endl;
 	}//for each sector
+	std::cout<<"the total hits in the ROI in this plane = "<<n_hits_ROI_plane<<std::endl;
 	return hits_per_bin;
 }
 
