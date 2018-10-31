@@ -43,6 +43,7 @@
 // ROOT includes. Note: To look up the properties of the ROOT classes,
  // use the ROOT web site; e.g.,// <http://root.cern.ch/root/html532/ClassIndex.html>
  #include "TH1.h"
+ #include "TF1.h"
  #include "TH2.h"
  #include "TTree.h"
  #include "TLorentzVector.h"
@@ -91,6 +92,10 @@ std::vector<std::array<double, 3>> Circle3D(const TVector3& centerPos, const TVe
 int contains_at_ind(int n, std::vector<int> list);
 
 bool contains(int n, std::vector<int> _listnotrack);
+
+//double fitFunction(double *x, double *par);
+double mygaus(double x, double A, double mean, double sigma);
+double fitf(Double_t *x,Double_t *par);
 
 std::vector<TVector2> getMinMaxShowerPlane(std::vector<std::array<double, 3>> coneRim,int plane, int fTPC, int fCryostat, geo::GeometryCore const& geo, detinfo::DetectorProperties const& detprop, TVector2 shower_start_plane, std::vector<TVector2> min_max);
 //double getRadius(double rad_in_cm);
@@ -313,6 +318,8 @@ namespace example {
 	 
     //int fnum_sshits_ROI_with_shower; 
     int n_inc;
+    double angle_min;
+    double angle_max;
     geo::GeometryCore const* fGeometry;
       //stuff to do the vertex to plane mapping
    // art::ServiceHandle<geo::Geometry>  geo;
@@ -430,6 +437,8 @@ SSNetTest::SSNetTest(Parameters const& config) // Initialize member data here.
 */
 
     n_inc = 100;
+    angle_min = -180;
+    angle_max = 180;
 
     // Access ART's TFileService, which will handle creating and writing
     // histograms and n-tuples for us. 
@@ -443,15 +452,15 @@ SSNetTest::SSNetTest(Parameters const& config) // Initialize member data here.
     fDist_sshits =		tfs->make<TH1D>("dist_all",";Distance from Vertex all SSNet Hits Roi;", 100, 0, fRadius);
     fAngle_sshits_noshower = 	tfs->make<TH1D>("angle_noshower",";Opening Angle SSNet Hits Roi minus Shower;",100, -3.3, 3.3);
     fDist_sshits_noshower = 	tfs->make<TH1D>("dist_noshower", ";Opening Angle all SSNet Hits Roi;",100, 0, fRadius);
-    fAngle_sshits_plane0 =  		tfs->make<TH1D>("angle_all_plane0",";Opening Angle all SSNet Hits Roi for Plane0;",n_inc, 0,360);
+    fAngle_sshits_plane0 =  		tfs->make<TH1D>("angle_all_plane0",";Opening Angle all SSNet Hits Roi for Plane0;",n_inc, angle_min, angle_max);
     fDist_sshits_plane0 =		tfs->make<TH1D>("dist_all_plane0",";Distance from Vertex all SSNet Hits Roi for Plane0;",100, 0, fRadius);
     fAngle_sshits_noshower_plane0 = 	tfs->make<TH1D>("angle_noshower_plane0",";Opening Angle SSNet Hits Roi minus Shower for Plane0;",100, -3.3, 3.3);
     fDist_sshits_noshower_plane0  = 	tfs->make<TH1D>("dist_noshower_plane0", ";Opening Angle all SSNet Hits Roi for Plane0;",100, 0, fRadius);
-    fAngle_sshits_plane1 =  		tfs->make<TH1D>("angle_all_plane1",";Opening Angle all SSNet Hits Roi for Plane1;",n_inc, 0,360);
+    fAngle_sshits_plane1 =  		tfs->make<TH1D>("angle_all_plane1",";Opening Angle all SSNet Hits Roi for Plane1;",n_inc, angle_min, angle_max);
     fDist_sshits_plane1 =		tfs->make<TH1D>("dist_all_plane1",";Distance from Vertex all SSNet Hits Roi for Plane1;",100, 0, fRadius);
     fAngle_sshits_noshower_plane1 = 	tfs->make<TH1D>("angle_noshower_plane1",";Opening Angle SSNet Hits Roi minus Shower for Plane1;",100, -3.3, 3.3);
     fDist_sshits_noshower_plane1  = 	tfs->make<TH1D>("dist_noshower_plane1", ";Opening Angle all SSNet Hits Roi for Plane1;",100, 0, fRadius);
-    fAngle_sshits_plane2 =  		tfs->make<TH1D>("angle_all_plane2",";Opening Angle all SSNet Hits Roi for Plane2;",100, 0,360);
+    fAngle_sshits_plane2 =  		tfs->make<TH1D>("angle_all_plane2",";Opening Angle all SSNet Hits Roi for Plane2;",n_inc, angle_min,angle_max);
     fDist_sshits_plane2 =		tfs->make<TH1D>("dist_all_plane2",";Distance from Vertex all SSNet Hits Roi for Plane2;",100, 0, fRadius);
     fAngle_sshits_noshower_plane2 = 	tfs->make<TH1D>("angle_noshower_plane2",";Opening Angle SSNet Hits Roi minus Shower for Plane2;",100, -3.3, 3.3);
     fDist_sshits_noshower_plane2  = 	tfs->make<TH1D>("dist_noshower_plane2", ";Opening Angle all SSNet Hits Roi for Plane2;",100, 0, fRadius);
@@ -1539,6 +1548,60 @@ for(auto const& item : _ROIhitlist){
 	fROITree->Fill();
 }
 
+/**
+ *
+ *Run some fits 
+ *
+ **/
+
+//fit all the ssnet hits on plane 0 with two gaussians
+//F(mean1, sigma1, mean2,sigma2) = gauss(mean1,sigma1)+ gauss(mean2,sigma2)
+//
+
+//if(make_hists_this_event ==true){
+//	TF1* f1= new TF1("f1","gaus([0], [1], [2]) + gaus([3], [4], [5])", angle_min, angle_max);
+//	fAngle_sshits_plane0->Fit(f1);
+//}
+
+//double fitFunction(double *x, double *par){
+//      return gaus(x,par) + gaus(x,&par[2]);
+//}
+if(make_hists_this_event ==true){
+
+	//TF1 *func = new TF1("fit",fitf,angle_min,angle_max,6);
+	//func->SetParNames("Norm1","Mean1","sigma1","Norm2","Mean2","Sigma2");
+	//func->SetParLimits(1,-40,40); //the first peak should be close to 0
+	//func->SetParLimits(2,-50,50); //the width shouldn't be too big
+	//func->SetParLimits(4,-50,50); //the width shouldn't be too big
+
+	TF1* func= new TF1("fitf",fitf,angle_min,angle_max,6);
+	//func->SetParNames("Norm1","Mean1","sigma1");
+	func->SetParNames("Norm1","Mean1","sigma1","Norm2","Mean2","Sigma2");
+	func->SetParLimits(0, 0, 100);
+	func->SetParLimits(1,-20,20); //the first peak should be close to 0
+        func->SetParLimits(2,-20,20); //the width should be <50
+	func->SetParameter(0, 50.0);
+	func->SetParameter(1, 0.01);
+	func->SetParameter(2, 10.0);
+	func->SetParLimits(3, 0, 100);
+	func->SetParLimits(4,angle_min,angle_max); //the first peak should be close to 0
+        func->SetParLimits(5,-20,20); //the width should be <50
+	func->SetParameter(3, 50.0);
+	func->SetParameter(4, 30);
+	func->SetParameter(5, 10.0);
+	
+
+	TFitResultPtr r = fAngle_sshits_plane0->Fit("fitf","MSVR");
+}
+//double chi2   = r->Chi2();                  // to retrieve the fit chi2
+//double par0   = r->Parameter(0);            // retrieve the value for the parameter 0
+//double err0   = r->ParError(0);             // retrieve the error for the parameter 0
+
+//std::cout<<"the chi2 for the fit is "<<chi2<<std::endl;
+
+//store the chi-square for each event 
+
+
 std::cout<<"the number of hits on plane0-2 when filling the tree was "<<n_plane0<<", "<<n_plane1<<", "<<n_plane2<<std::endl;
 
 //if(make_hists_this_event ==true){
@@ -1897,6 +1960,8 @@ std::vector<TVector2> getNumHitsSectors(int n_inc,TVector2 shower_end, double ra
 	TVector2 vertex = calcCM(TVector2(vertex_time, vertex_wire), fTimetoCMConstant, fWiretoCMConstant);	
 	std::cout<<"the vertex on this plane is "<<vertex.X()<<", "<<vertex.Y()<<std::endl;
 	TVector2 sec_start = shower_end_cm - vertex;
+	sec_start = sec_start * -1;
+	std::cout<<"the sector start for sector 0 is "<<sec_start.X()<<", "<<sec_start.Y()<<std::endl;
 	//TVector2 sec_start = vertex + TVector2(0, radius);//define the 0 point wrt the vertex in CM 
 	TVector2 sec_end;
 	//Tvector2 sec_end = getSectorEnd(sec_start, theta_seg);
@@ -1937,14 +2002,14 @@ std::vector<TVector2> getNumHitsSectors(int n_inc,TVector2 shower_end, double ra
 		n_hits_ROI_plane += n_sec;
 		this_theta += theta_seg;
 		//std::cout<<"The angle for this sector is "<<this_theta<<std::endl;
-		std::cout<<"The number of hits in sector "<<i<<" is "<<n_sec<<std::endl;
+		//std::cout<<"The number of hits in sector "<<i<<" is "<<n_sec<<std::endl;
 	}//for each sector
 	std::cout<<"the total hits in the ROI in this plane = "<<n_hits_ROI_plane<<std::endl;
 
 	for (auto item: hit_has_been_filled ){
+		//std::cout<<"this his was read "<<item<<" times"<<std::endl;
 		if(item != 1){
-		std::cout<<"ERROR, this hit was counted "<<item<<" times"<<std::endl;
-
+			std::cout<<"ERROR, this hit was counted "<<item<<" times"<<std::endl;
 		}
 	}
 	return hits_per_bin;
@@ -2108,6 +2173,23 @@ bool contains(int n, std::vector<int> _listnotrack){
 	}	
 	return contains;
 }
+
+//double fitFunction(double *x, double *par){
+//      return TF1::gaus(x,par) + TF1::gaus(x,&par[2]);
+//}
+
+double mygaus(double x, double A, double mean, double sigma){
+	return A*exp(-(x-mean)*(x-mean)/(2.0*sigma*sigma));
+}
+
+double fitf(Double_t *x,Double_t *par) {
+        return  mygaus(x[0], par[0],par[1],par[2])+ mygaus(x[0], par[3],par[4],par[5]);
+//      return  mygaus(x[0], par[0],par[1],par[2]);
+  
+}
+
+
+
 
 //gets the two other vertices of a shower for a given plane by computing a circle in 3D
 //and then projecting each point to a given plane
