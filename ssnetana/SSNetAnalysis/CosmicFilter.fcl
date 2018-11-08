@@ -11,6 +11,8 @@ SSNetCosmicFilter: {
  VetoRadius    : 150.
  IPmin         : 10.
  MinTrkLength  : 50.
+ #InputVertexFile: "/uboone/app/users/markrl/single_photon_fresh_13April/working_dir/hellstroms_hive/deltaRad/build/src_new/bnbcosmics_vertex_file"
+ InputVertexFile: "/uboone/app/users/markrl/single_photon_fresh_13April/working_dir/hellstroms_hive/deltaRad/build/src_new/ncdeltaradcosmics_vertex_file"
 }
 
 END_PROLOG

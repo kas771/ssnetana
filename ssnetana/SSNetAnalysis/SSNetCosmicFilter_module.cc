@@ -87,6 +87,11 @@ private:
   // vector of track-like hit indices
   std::vector<size_t> _trkhits;
 
+  //text file containing info about the single photon vertex for the events
+  std::string fInputVertexFile;
+
+  //stream to read in from InputVertexFile
+  std::ifstream in_stream;
   /**
      Return number of track - sphere intersection points and 
      minimum distance of track-points to sphere
@@ -118,12 +123,81 @@ SSNetCosmicFilter::SSNetCosmicFilter(fhicl::ParameterSet const & p)
   fMinTrkLength = p.get<double>     ("MinTrkLength");
 
   fVetoRadiusSq    = fVetoRadius * fVetoRadius;
+  fInputVertexFile = p.get<std::string>     ("InputVertexFile");
+
+ //initialize io stream for reading from input, quit if file not opened properly
+  in_stream.open(fInputVertexFile);
+  if (!in_stream.is_open()){
+          std::cout<<"ERROR input file not open: "<<fInputVertexFile<<std::endl;
+           exit(0);
+                }
 }
 
 void SSNetCosmicFilter::produce(art::Event & e)
 {
   // Implementation of required member function here.
   std::cout<<"starting event"<<std::endl;
+
+ // get run, subrun, event
+  int fEvent  = e.id().event();
+  int fRun    = e.run();
+  int fSubRun = e.subRun();
+
+  std::cout<<"the run, rubrun, event is "<<fRun<<" ,"<<fSubRun<<", "<<fEvent<<std::endl;
+
+ //check for a matching single photon vertex in the text file
+  //initialize line
+    int nlines = 0;
+    std::string line;
+    line.clear();
+ 
+
+    //set to start of the input file
+    in_stream.clear();
+    in_stream.seekg(0, in_stream.beg);
+    //std::cout<<"the position in the sequnce is "<<in_stream.tellg()<<std::endl; 
+   
+    //find corresponding line in .txt input file for this event
+    bool matched= false;        
+    std::vector<std::string> words_in_line;
+    while ( getline (in_stream,line) )
+    {
+        words_in_line.clear();  
+        int this_word= 0;
+        std::istringstream iss(line);
+//      std::vector<std::string> words_in_line;
+        do {
+                std::string subs;
+                iss >> subs;
+                //if (word == 0 && subs!= std::to_string(fRun)){continue;}
+                //std::cout << "Substring at word "<<this_word<<" is: " << subs <<std::endl;
+                words_in_line.push_back(subs);  
+                this_word++;
+        } while (iss);  
+
+        if (words_in_line[0] == std::to_string(fRun) && words_in_line[1] == std::to_string(fSubRun) && words_in_line[2]==std::to_string(fEvent)){
+                std::cout<<"Matched: "<<words_in_line[0]<<", "<<words_in_line[1]<<", "<<words_in_line[2]<<std::endl;
+                matched = true;
+                break;
+                }
+        nlines++;
+    }
+
+ //if a vertex is found, save the XYZ position
+ if (matched == false){
+	std::cout<<"ERROR: No match found for this event. Skipping!"<<std::endl;
+ }
+
+ if (matched == true){
+
+ TVector3 single_vertex = TVector3(std::stof (words_in_line[3], 0), std::stof (words_in_line[4], 0), std::stof (words_in_line[5], 0));
+   
+  double _xpos = single_vertex.X();
+  double _ypos = single_vertex.Y();
+  double _zpos = single_vertex.Z();
+ 
+  std::cout<<"the single photon vertex is at "<<_xpos<<", "<<_ypos<<", "<<_zpos<<std::endl;
+ 
   // grab pfparticles
   auto const& pfp_h = e.getValidHandle<std::vector<recob::PFParticle>>(fPFPProducer);
   // grab tracks
@@ -133,7 +207,7 @@ void SSNetCosmicFilter::produce(art::Event & e)
   // grab ssnet hits
   auto const& hit_h = e.getValidHandle<std::vector<recob::Hit>>(fHitProducer);
   // grab vertex
-  auto const& vtx_h = e.getValidHandle<std::vector<recob::Vertex>>(fVtxProducer);
+ // auto const& vtx_h = e.getValidHandle<std::vector<recob::Vertex>>(fVtxProducer);
 
   // grab tracks and clusters associated to PFParticle
   art::FindManyP<recob::Track  > pfp_trk_assn_v(pfp_h, e, fPFPProducer);
@@ -151,6 +225,7 @@ void SSNetCosmicFilter::produce(art::Event & e)
   // clear track-like hit vector
   _trkhits.clear();
 
+/*
   // BEGIN : LOAD VERTEX
   // check that only one vertex exists
   if (vtx_h->size() != 1) 
@@ -162,6 +237,7 @@ void SSNetCosmicFilter::produce(art::Event & e)
   _ypos = xyz[1];
   _zpos = xyz[2];
   // END : LOAD VERTEX
+*/
 
   // BEGIN : PERFORM HIT MATCHING
   // strategy:
@@ -299,7 +375,7 @@ void SSNetCosmicFilter::produce(art::Event & e)
   std::cout << "output hits : " << Hit_v->size() << std::endl;
   
   e.put(std::move(Hit_v));
-  
+ }//if matched file found 
 }
 
 void SSNetCosmicFilter::beginJob()
@@ -311,6 +387,7 @@ void SSNetCosmicFilter::beginJob()
 void SSNetCosmicFilter::endJob()
 {
   // Implementation of optional member function here.
+  in_stream.close();
 }
 
 void SSNetCosmicFilter::FillChannelMap(const art::ValidHandle<std::vector<::recob::Hit> > hit_h) {
