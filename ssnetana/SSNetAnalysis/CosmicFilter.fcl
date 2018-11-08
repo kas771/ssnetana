@@ -1,0 +1,17 @@
+BEGIN_PROLOG
+
+
+SSNetCosmicFilter: {
+ module_type   : "SSNetCosmicFilter"  
+ HitProducer   : "ssnethitmaker:shrhit90"
+ VtxProducer   : "pandoraNu"
+ TrkProducer   : "pandoraCosmic"
+ CluProducer   : "pandoraCosmic"
+ PFPProducer   : "pandoraCosmic"
+ VetoRadius    : 150.
+ IPmin         : 10.
+ MinTrkLength  : 50.
+}
+
+END_PROLOG
+

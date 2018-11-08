@@ -1,0 +1,48 @@
+#include "services_microboone.fcl"
+
+services:
+{ 
+  # Load the service that manages root files for histograms.
+  TFileService:            { fileName: "SSNetHits_cosmicfilter.root" }
+}
+
+outputs:
+{
+ out1:
+ { 
+   module_type: RootOutput
+   fileName:    "cosmicfiltered.root" #default file name, can override from command line with -o or --output
+   #SelectEvents:[reco]
+   #fastCloning: true
+ }
+}
+
+
+physics:
+{
+
+ producers:
+ {
+
+	SSNetCosmicFilter: {
+ 		module_type   : "SSNetCosmicFilter"  
+ 		HitProducer   : "ssnethitmaker:shrhit90"
+ 		VtxProducer   : "pandoraNu"
+ 		TrkProducer   : "pandoraCosmic"
+ 		CluProducer   : "pandoraCosmic"
+ 		PFPProducer   : "pandoraCosmic"
+ 		VetoRadius    : 150.
+ 		IPmin         : 10.
+ 		MinTrkLength  : 50.
+	}
+  }
+
+
+
+ #define the output stream, there could be more than one if using filters 
+  stream1:  [ out1 ]
+  end_paths:     [ stream1 ]
+}
+
+
+
