@@ -1578,20 +1578,23 @@ if(make_hists_this_event ==true){
 	//func->SetParNames("Norm1","Mean1","sigma1");
 	func->SetParNames("Norm1","Mean1","sigma1","Norm2","Mean2","Sigma2");
 	func->SetParLimits(0, 0, 100);
-	func->SetParLimits(1,-20,20); //the first peak should be close to 0
-        func->SetParLimits(2,-20,20); //the width should be <50
+	func->SetParLimits(1,-30,30); //the first peak should be close to 0
+        func->SetParLimits(2,-30,30); //the width should be <50
 	func->SetParameter(0, 50.0);
 	func->SetParameter(1, 0.01);
 	func->SetParameter(2, 10.0);
 	func->SetParLimits(3, 0, 100);
 	func->SetParLimits(4,angle_min,angle_max); //the first peak should be close to 0
-        func->SetParLimits(5,-20,20); //the width should be <50
+        func->SetParLimits(5,-30,30); //the width should be <50
 	func->SetParameter(3, 50.0);
 	func->SetParameter(4, 30);
 	func->SetParameter(5, 10.0);
 	
 
-	TFitResultPtr r = fAngle_sshits_plane0->Fit("fitf","MSVR");
+	TFitResultPtr r0 = fAngle_sshits_plane0->Fit("fitf","MSVR");
+
+ 	TFitResultPtr r1 = fAngle_sshits_plane1->Fit("fitf","MSVR");	
+	TFitResultPtr r2 = fAngle_sshits_plane2->Fit("fitf","MSVR");	
 }
 //double chi2   = r->Chi2();                  // to retrieve the fit chi2
 //double par0   = r->Parameter(0);            // retrieve the value for the parameter 0

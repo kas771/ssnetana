@@ -4,8 +4,9 @@
 #include "services_microboone_simulation.fcl"
 #include "services_microboone_basic.fcl"
 #include "litedatamin_reco2d.fcl"
+#include "CosmicFilter.fcl"
 
-process_name: SSNetAnalysis
+process_name: testing
 
 services:
 {
@@ -52,10 +53,14 @@ source:
 }
 
 # This is empty, because we're not writing any art::Events to an output file. 
-outputs:{}
+#outputs:{}
 
 physics:
 {
+  producers:
+  {
+   cosmicfilter: @local::SSNetCosmicFilter 
+ }
   # Define the variables we'll need to run for this analysis program.
   analyzers:
   {
@@ -86,21 +91,24 @@ physics:
       #InputVertexFile: "/uboone/app/users/markrl/single_photon_fresh_13April/working_dir/hellstroms_hive/deltaRad/build/src_new/bnbcosmics_vertex_file"
       InputVertexFile: "/uboone/app/users/markrl/single_photon_fresh_13April/working_dir/hellstroms_hive/deltaRad/build/src_new/ncdeltaradcosmics_vertex_file"
       Run:		2
-      Subrun:		2751
-      Event:		55019220
+      Subrun:		2538
+      Event:		50752551
 	 }
   }
 #}
 
+  reco: [cosmicfilter]
+
   # Schedule job step(s) for execution by defining the analysis module
   # for this job. 
-  analysis: [ SSNetAnalysis ]
+  ana: [ SSNetAnalysis ]
    #analysis: [llana]
 
   # "end_paths" is a keyword and contains the modules that do not modify the art::Event;
   # i.e., analyzers and output streams.
+  stream1: [out1]
 
-  end_paths: [ analysis ]
+  end_paths: [stream1, ana ]
 }
 
 services.DetectorProperties.NumberTimeSamples:                             6400
@@ -131,6 +139,21 @@ services.message.destinations :
   }
 }
  }
+
+
+outputs:
+{
+	out1:
+{
+	module_type:RootOutput
+	fileName: "cosmicfilter.root"
+	dataTier: "reco"
+	compressionLevel: 1
+
+}
+
+}
+
 #physics.analyzers.llana.out_filename:  "larlite.root"
 
 #physics.analyzers.llana.stream:      "llana"
