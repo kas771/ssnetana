@@ -93,6 +93,7 @@ physics:
       Run:		2
       Subrun:		2538
       Event:		50752551
+      CosmicFilterHits: "cosmicfilter"
 	 }
   }
 #}

@@ -195,6 +195,12 @@ namespace example {
         Comment("The event number for the event to for the output histograms")
 	};
 
+    fhicl::Atom<art::InputTag>  CosmicFilterHits {
+        Name("CosmicFilterHits"),
+        Comment("the SSNet Hits left in the ROI once the cosmic removal")
+	};
+
+
 };//struct
     
      using Parameters = art::EDAnalyzer::Table<Config>;
@@ -234,7 +240,8 @@ namespace example {
     int fRun_hist; //the run number to make histograms for
     int fSubrun_hist; //the subrun number to make histograms for
     int fEvent_hist; //the event number to make histograms for
-
+    art::InputTag fCosmicFilterHits; ///name of producer for the cosmic-removed SNet Hits
+    
 // vector of shower-like hit indices
 //   std::vector<size_t> _shrhits;
 
@@ -353,6 +360,7 @@ SSNetTest::SSNetTest(Parameters const& config) // Initialize member data here.
 	, fRun_hist		       	  (config().Run())
 	, fSubrun_hist		       	  (config().Subrun())
 	, fEvent_hist		       	  (config().Event())
+	, fCosmicFilterHits		       	  (config().CosmicFilterHits())
 	
 	// fInHitProducer   = p.get<std::string>("InHitProducer","gaushit");
         //fPxThresholdHigh = p.get<double>     ("PxThresholdHigh"        );
@@ -690,6 +698,10 @@ SSNetTest::SSNetTest(Parameters const& config) // Initialize member data here.
  art::Handle< std::vector<recob::Hit> > sshitHandle;
  if (!event.getByLabel(fSSHitProducerLabel, sshitHandle)) return;
 
+//load cosmic-removed ssnet hits
+ art::Handle< std::vector<recob::Hit> > cosmichitHandle;
+ if (!event.getByLabel(fCosmicFilterHits, cosmichitHandle)) return;
+
 //list storing pairs of associated hits and sshits
 std::list<std::pair<const recob::Hit*, const recob::Hit* >> _hitlist; //a list of all sshits<->hits in the event
 std::list<std::pair<const recob::Hit*, const recob::Hit* >> _showerhitlist; //a list of sshits<->hits in the shower associated with vertex (not exclusively in ROI)
@@ -731,6 +743,17 @@ for ( auto const& hit : (*hitHandle) ){
 	n2++;
 }
 
+//add cosmic-removed ssnet hits to .txt file
+int n_cos = 0;
+ for ( auto const& coshit : (*cosmichitHandle) )
+      {
+	int plane = coshit.View();
+	double wire = coshit.WireID().Wire;
+	double time = coshit.PeakTime();
+	out_stream<<"coshit "<<n_cos<<" plane "<<plane<<" wire time "<<wire <<" "<<time<<"\n";
+	n_cos++;
+      }	
+	
 fnum_total_matched_hits = _hitlist.size();
 fratio_total_sshits_hits = (double)fnum_total_sshits/fnum_total_hits;
 std::cout<<"number of hits = "<<fnum_total_hits<<", number of sshits = "<<n<<"/"<<fnum_total_sshits<<", number of matches = "<<fnum_total_matched_hits<<std::endl;
