@@ -94,8 +94,8 @@ int contains_at_ind(int n, std::vector<int> list);
 bool contains(int n, std::vector<int> _listnotrack);
 
 //double fitFunction(double *x, double *par);
-double mygaus(double x, double A, double mean, double sigma);
-double fitf(Double_t *x,Double_t *par);
+//double mygaus(double x, double A, double mean, double sigma);
+//double fitf(Double_t *x,Double_t *par);
 
 std::vector<TVector2> getMinMaxShowerPlane(std::vector<std::array<double, 3>> coneRim,int plane, int fTPC, int fCryostat, geo::GeometryCore const& geo, detinfo::DetectorProperties const& detprop, TVector2 shower_start_plane, std::vector<TVector2> min_max);
 //double getRadius(double rad_in_cm);
@@ -1589,6 +1589,9 @@ for(auto const& item : _ROIhitlist){
 //double fitFunction(double *x, double *par){
 //      return gaus(x,par) + gaus(x,&par[2]);
 //}
+//
+
+/*
 if(make_hists_this_event ==true){
 
 	//TF1 *func = new TF1("fit",fitf,angle_min,angle_max,6);
@@ -1626,7 +1629,7 @@ if(make_hists_this_event ==true){
 //std::cout<<"the chi2 for the fit is "<<chi2<<std::endl;
 
 //store the chi-square for each event 
-
+*/
 
 std::cout<<"the number of hits on plane0-2 when filling the tree was "<<n_plane0<<", "<<n_plane1<<", "<<n_plane2<<std::endl;
 
@@ -2204,6 +2207,7 @@ bool contains(int n, std::vector<int> _listnotrack){
 //      return TF1::gaus(x,par) + TF1::gaus(x,&par[2]);
 //}
 
+/*
 double mygaus(double x, double A, double mean, double sigma){
 	return A*exp(-(x-mean)*(x-mean)/(2.0*sigma*sigma));
 }
@@ -2213,7 +2217,7 @@ double fitf(Double_t *x,Double_t *par) {
 //      return  mygaus(x[0], par[0],par[1],par[2]);
   
 }
-
+*/
 
 
 
